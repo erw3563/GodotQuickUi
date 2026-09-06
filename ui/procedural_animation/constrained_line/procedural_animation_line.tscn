@@ -1,0 +1,41 @@
+[gd_scene format=3 uid="uid://c02yqfpde57hd"]
+
+[ext_resource type="Script" uid="uid://7h6qu45dim34" path="res://addons/gdbase/ui/procedural_animation/constrained_line/constrained_line.gd" id="1_lweae"]
+[ext_resource type="Shader" uid="uid://ccy4e3mlako78" path="res://addons/gdbase/ui/procedural_animation/constrained_line/outline.gdshader" id="2_lweae"]
+
+
+[sub_resource type="Curve" id="Curve_ko541"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_lweae"]
+shader = ExtResource("2_lweae")
+shader_parameter/outline_color = Color(0, 0, 0, 1)
+shader_parameter/outline_size = 1.0
+shader_parameter/alpha_threshold = 0.0
+shader_parameter/outline_samples = 4
+shader_parameter/shade_color = Color(1, 1, 1, 0)
+
+[node name="Line" type="Node2D" node_paths=PackedStringArray("line2d")]
+script = ExtResource("1_lweae")
+line2d = NodePath("SubViewportContainer/SubViewport/Line2D")
+line_points = Array[Vector2]([Vector2(0, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0), Vector2(0, 0)])
+max_radius = 4.0
+min_radius = 2.0
+max_bend_angle_deg = 180.0
+min_bend_angle_deg = 120.0
+line_curve = SubResource("Curve_ko541")
+
+[node name="SubViewportContainer" type="SubViewportContainer" parent="."]
+material = SubResource("ShaderMaterial_lweae")
+offset_right = 1152.0
+offset_bottom = 648.0
+
+[node name="SubViewport" type="SubViewport" parent="SubViewportContainer"]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(1152, 648)
+render_target_update_mode = 4
+
+[node name="Line2D" type="Line2D" parent="SubViewportContainer/SubViewport"]
+joint_mode = 2

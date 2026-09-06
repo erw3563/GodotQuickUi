@@ -1,0 +1,86 @@
+[gd_scene format=3 uid="uid://brmlf7fm3iwme"]
+
+[ext_resource type="Script" uid="uid://bynsgdyfwx3kh" path="res://addons/gdbase/ui/examples/ui_showcase/pages/page_quick_pop_out.gd" id="1_ntse2"]
+[ext_resource type="Script" uid="uid://bca3v3rs67bt7" path="res://addons/gdbase/ui/quick_node/quick_pop_out.gd" id="2_3vnsh"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qnkys"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.55, 0.35, 0.7, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="PageQuickPopOut" type="Control" unique_id=1280487150]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_ntse2")
+
+[node name="TargetCard" type="Panel" parent="." unique_id=1415685483]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(420, 190)
+layout_mode = 0
+offset_left = 430.0
+offset_top = 150.0
+offset_right = 850.0
+offset_bottom = 340.0
+pivot_offset = Vector2(210, 95)
+theme_override_styles/panel = SubResource("StyleBoxFlat_qnkys")
+
+[node name="Caption" type="Label" parent="TargetCard" unique_id=1966357565]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 14.0
+offset_bottom = 10.0
+theme_override_font_sizes/font_size = 15
+text = "被驱动的面板"
+
+[node name="Popper" type="Node" parent="TargetCard" unique_id=704200569 node_paths=PackedStringArray("ui")]
+ui = NodePath("..")
+unique_name_in_owner = true
+script = ExtResource("2_3vnsh")
+enter_direction = 1
+
+[node name="Toolbar" type="HBoxContainer" parent="." unique_id=655624200]
+layout_mode = 0
+offset_left = 430.0
+offset_top = 380.0
+offset_right = 430.0
+offset_bottom = 380.0
+theme_override_constants/separation = 8
+
+[node name="DirectionOption" type="OptionButton" parent="Toolbar" unique_id=754403521]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="ButtonPopOut" type="Button" parent="Toolbar" unique_id=1764456173]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "收回"
+
+[node name="ButtonPopIn" type="Button" parent="Toolbar" unique_id=1761604152]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "弹出"
+
+[node name="Hint" type="Label" parent="." unique_id=1011534653]
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -64.0
+offset_right = -24.0
+offset_bottom = -24.0
+theme_override_font_sizes/font_size = 14
+text = "选方向后点「弹出/收回」：面板从屏幕外沿所选方向飞入/飞出并淡入淡出。"
+autowrap_mode = 3
