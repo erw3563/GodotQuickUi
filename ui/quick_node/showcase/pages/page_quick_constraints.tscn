@@ -1,0 +1,113 @@
+[gd_scene format=3 uid="uid://dub3gkvlgf0ck"]
+
+[ext_resource type="Script" uid="uid://cxin5e0npxqlw" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_constraints.gd" id="1_5jp2j"]
+[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_host.gd" id="2_host"]
+[ext_resource type="Script" uid="uid://ceblvo83akkn8" path="res://addons/gdbase/ui/quick_node/quick_drag.gd" id="3_oeqc1"]
+[ext_resource type="Script" uid="uid://r6t41m2p2q7b" path="res://addons/gdbase/ui/quick_node/quick_constraints.gd" id="4_stage"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_12cbh"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.24, 0.55, 0.4, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_yer3s"]
+bg_color = Color(0.9, 0.9, 0.95, 0.08)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.9, 0.9, 0.95, 0.35)
+
+[node name="PageQuickConstraints" type="Control" unique_id=1736865614]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_5jp2j")
+
+[node name="Card" type="Panel" parent="." unique_id=983604208]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 120)
+layout_mode = 0
+offset_left = 500.0
+offset_top = 170.0
+offset_right = 720.0
+offset_bottom = 290.0
+pivot_offset = Vector2(110, 60)
+theme_override_styles/panel = SubResource("StyleBoxFlat_12cbh")
+
+[node name="Caption" type="Label" parent="Card" unique_id=902918346]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 14.0
+offset_bottom = 10.0
+theme_override_font_sizes/font_size = 15
+text = "拖我
+（会被四角标记拦住）"
+
+[node name="QuickHost" type="Node" parent="Card"]
+script = ExtResource("2_host")
+create_drag = true
+create_constraints = true
+
+[node name="QuickConstraints" type="Node" parent="Card/QuickHost" node_paths=PackedStringArray("ui", "mark_max_x_control", "mark_min_x_control", "mark_max_y_control", "mark_min_y_control")]
+ui = NodePath("../..")
+mark_max_x_control = NodePath("../../../MarkBR")
+mark_min_x_control = NodePath("../../../MarkTL")
+mark_max_y_control = NodePath("../../../MarkBR")
+mark_min_y_control = NodePath("../../../MarkTL")
+script = ExtResource("4_stage")
+mark_max_x_offset = -226.0
+mark_min_x_offset = 6.0
+mark_max_y_offset = -126.0
+mark_min_y_offset = 6.0
+
+[node name="QuickDrag" type="Node" parent="Card/QuickHost" node_paths=PackedStringArray("dragged_ui", "clickable_ui")]
+script = ExtResource("3_oeqc1")
+dragged_ui = NodePath("../..")
+clickable_ui = NodePath("../..")
+
+[node name="Frame" type="Panel" parent="." unique_id=1788828133]
+layout_mode = 0
+offset_left = 70.0
+offset_top = 50.0
+offset_right = 990.0
+offset_bottom = 410.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_yer3s")
+
+[node name="MarkTL" type="Control" parent="." unique_id=342938529]
+anchors_preset = 0
+offset_left = 70.0
+offset_top = 50.0
+offset_right = 70.0
+offset_bottom = 50.0
+mouse_filter = 2
+
+[node name="MarkBR" type="Control" parent="." unique_id=1592213789]
+anchors_preset = 0
+offset_left = 990.0
+offset_top = 410.0
+offset_right = 990.0
+offset_bottom = 410.0
+mouse_filter = 2
+
+[node name="Hint" type="Label" parent="." unique_id=573415842]
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -64.0
+offset_right = -24.0
+offset_bottom = -24.0
+theme_override_font_sizes/font_size = 14
+text = "自由拖动卡片——拖拽落笔经 QuickHost 中介以交互意图裁决、由 QuickConstraints stage 钳制后唯一落笔，始终被夹在四角浅色标记框内（基于标记控件+偏移量）。"
+autowrap_mode = 3

@@ -1,0 +1,130 @@
+[gd_scene format=3 uid="uid://ben5ww1unwftq"]
+
+[ext_resource type="Script" uid="uid://c82p0wroeg6cw" path="res://addons/gdbase/ui/layout_node/showcase/pages/page_orbit_track.gd" id="1_page"]
+[ext_resource type="Script" uid="uid://c8tc6wlk6gyw2" path="res://addons/gdbase/ui/layout_node/orbit_track.gd" id="2_orbit"]
+
+[sub_resource type="StyleBoxFlat" id="CardStyle"]
+content_margin_left = 8.0
+content_margin_top = 6.0
+content_margin_right = 8.0
+content_margin_bottom = 6.0
+bg_color = Color(0.92, 0.94, 0.97, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="PageOrbitTrack" type="Control" unique_id=257336001]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_page")
+
+[node name="Toolbar" type="HBoxContainer" parent="." unique_id=1472542092]
+layout_mode = 1
+offset_left = 24.0
+offset_top = 16.0
+offset_right = 724.0
+offset_bottom = 52.0
+theme_override_constants/separation = 12
+
+[node name="SpinToggle" type="CheckButton" parent="Toolbar" unique_id=359118776]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "自转"
+
+[node name="AddCardButton" type="Button" parent="Toolbar" unique_id=104183328]
+unique_name_in_owner = true
+layout_mode = 2
+text = "＋卡片"
+
+[node name="RemoveCardButton" type="Button" parent="Toolbar" unique_id=1610216364]
+unique_name_in_owner = true
+layout_mode = 2
+text = "－卡片"
+
+[node name="HideCardButton" type="Button" parent="Toolbar" unique_id=1529974888]
+unique_name_in_owner = true
+layout_mode = 2
+text = "隐藏首卡（仍占槽位）"
+
+[node name="RadiusSlider" type="HSlider" parent="Toolbar" unique_id=578566841]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 0)
+layout_mode = 2
+min_value = 40.0
+max_value = 260.0
+value = 150.0
+
+[node name="RadiusValue" type="Label" parent="Toolbar" unique_id=1157546270]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "150 px"
+
+[node name="DealButton" type="Button" parent="Toolbar" unique_id=872115221]
+unique_name_in_owner = true
+layout_mode = 2
+text = "发牌"
+
+[node name="SimultaneousToggle" type="CheckButton" parent="Toolbar" unique_id=1703869352]
+unique_name_in_owner = true
+layout_mode = 2
+text = "齐发"
+
+[node name="Orbit" type="Control" parent="." unique_id=1452214833]
+unique_name_in_owner = true
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -210.0
+offset_top = -210.0
+offset_right = 210.0
+offset_bottom = 210.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_orbit")
+orbit_radius = 150.0
+
+[node name="CardTemplate" type="Panel" parent="." unique_id=599077680]
+unique_name_in_owner = true
+visible = false
+layout_mode = 1
+offset_right = 112.0
+offset_bottom = 60.0
+theme_override_styles/panel = SubResource("CardStyle")
+
+[node name="Caption" type="Label" parent="CardTemplate" unique_id=211382065]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_font_sizes/font_size = 13
+text = "卡片"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Hint" type="Label" parent="." unique_id=1683803369]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -64.0
+offset_right = -24.0
+offset_bottom = -24.0
+grow_horizontal = 2
+grow_vertical = 0
+theme_override_font_sizes/font_size = 14
+text = "OrbitTrack 按直接 Control 子节点的顺序均匀排上环形轨道并保持直立：自转可开关、半径可调；隐藏的卡片仍占槽位，非 Control 子节点不参与排列。R 重置。"
+autowrap_mode = 3

@@ -1,0 +1,96 @@
+[gd_scene format=3 uid="uid://da2pcvd0lbt4g"]
+
+[ext_resource type="Script" uid="uid://boses33uis22n" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_show.gd" id="1_ijty7"]
+[ext_resource type="Script" uid="uid://l5j44igh7cty" path="res://addons/gdbase/ui/quick_node/quick_show.gd" id="2_i55r5"]
+[ext_resource type="Script" uid="uid://bw00dnrh07iwt" path="res://addons/gdbase/ui/quick_node/quick_mouse_place.gd" id="3_place"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gq3th"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.16, 0.3, 0.42, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="PageQuickShow" type="Control" unique_id=1362688781]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_ijty7")
+
+[node name="OpenButton" type="Button" parent="." unique_id=874912149]
+unique_name_in_owner = true
+layout_mode = 0
+offset_left = 360.0
+offset_top = 160.0
+offset_right = 360.0
+offset_bottom = 160.0
+focus_mode = 0
+text = "打开菜单（出现在鼠标处）"
+
+[node name="Menu" type="Panel" parent="." unique_id=2036542846]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(210, 150)
+layout_mode = 0
+offset_right = 210.0
+offset_bottom = 150.0
+pivot_offset = Vector2(105, 75)
+theme_override_styles/panel = SubResource("StyleBoxFlat_gq3th")
+
+[node name="ItemCopy" type="Button" parent="Menu" unique_id=1166000342]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 14.0
+offset_right = 16.0
+offset_bottom = 14.0
+focus_mode = 0
+text = "复制"
+
+[node name="ItemPaste" type="Button" parent="Menu" unique_id=2043659348]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 56.0
+offset_right = 16.0
+offset_bottom = 56.0
+focus_mode = 0
+text = "粘贴"
+
+[node name="ItemDelete" type="Button" parent="Menu" unique_id=1055147534]
+layout_mode = 0
+offset_left = 16.0
+offset_top = 98.0
+offset_right = 16.0
+offset_bottom = 98.0
+focus_mode = 0
+text = "删除"
+
+[node name="Hint" type="Label" parent="." unique_id=1489651235]
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -64.0
+offset_right = -24.0
+offset_bottom = -24.0
+theme_override_font_sizes/font_size = 14
+text = "点「打开菜单」在鼠标位置弹出小菜单（自动避免超出屏幕、可强制顶点对齐鼠标）；按 Q 收起。"
+autowrap_mode = 3
+
+[node name="Shower" type="Node" parent="." unique_id=1199755064 node_paths=PackedStringArray("control")]
+control = NodePath("../Menu")
+unique_name_in_owner = true
+script = ExtResource("2_i55r5")
+is_hide_in_ready = false
+hide_action = "demo_quick_show_hide"
+
+[node name="Placer" type="Node" parent="." node_paths=PackedStringArray("control", "show")]
+control = NodePath("../Menu")
+show = NodePath("../Shower")
+unique_name_in_owner = true
+script = ExtResource("3_place")

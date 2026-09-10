@@ -1,8 +1,13 @@
+@tool
 class_name ZoomPanel
 extends PanelContainer
 ## 缩放面板：入场从起点缩放放大至目标缩放
 
 signal expanded_changed(is_expanded: bool)
+
+@export_group("动画预览")
+@export_tool_button("播放一次", "Play") var preview_play_action: Callable = preview_play
+@export_tool_button("停止并恢复", "Stop") var preview_stop_action: Callable = preview_stop
 
 @export_group("缩放")
 ## 放大原点在面板内的比例坐标（0~1；默认正中心向四周铺开，四角可设 0/1）
@@ -80,7 +85,8 @@ var is_expanded: bool = true:
 		if is_expanded == value:
 			return
 		is_expanded = value
-		expanded_changed.emit(is_expanded)
+		if not Engine.is_editor_hint():
+			expanded_changed.emit(is_expanded)
 		if _is_layout_ready:
 			_apply_zoom(true)
 
@@ -98,6 +104,9 @@ var _is_pointer_in_window: bool = true
 
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		_update_input_process()
+		return
 	_authored_mouse_filter = mouse_filter
 	# 布局采样前先隐藏归零，避免入场动画开始前闪现完整面板。
 	visible = false
@@ -113,6 +122,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	preview_stop()
 	_disconnect_toggle_button()
 	_disconnect_window_mouse_tracking()
 	_kill_zoom_tween()
@@ -140,6 +150,8 @@ func collapse() -> void:
 #region 交互输入
 
 func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	if not expand_on_mouse_hover:
 		return
 	if _is_mouse_inside_panel():
@@ -149,6 +161,8 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
 	if not toggle_on_click:
 		return
 	if not (event is InputEventMouseButton \
@@ -170,6 +184,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
 	if toggle_input_action == &"":
 		return
 	if event.is_action_pressed(toggle_input_action):
@@ -178,6 +194,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
 	if not toggle_on_click or not is_expanded:
 		return
 	if interaction_control != null:
@@ -271,6 +289,8 @@ func _get_interaction_rect() -> Rect2:
 
 
 func _connect_window_mouse_tracking() -> void:
+	if Engine.is_editor_hint():
+		return
 	if not is_inside_tree():
 		return
 	var window := get_window()
@@ -305,11 +325,21 @@ func _on_window_mouse_exited() -> void:
 
 ## 仅在开启悬停展开时启用每帧检测
 func _update_hover_process() -> void:
+	if Engine.is_editor_hint():
+		set_process(false)
+		set_process_input(false)
+		set_process_unhandled_input(false)
+		return
 	set_process(expand_on_mouse_hover and is_inside_tree())
 
 
 ## 按需启用点击/按键输入处理
 func _update_input_process() -> void:
+	if Engine.is_editor_hint():
+		set_process(false)
+		set_process_input(false)
+		set_process_unhandled_input(false)
+		return
 	if not is_inside_tree():
 		set_process_input(false)
 		set_process_unhandled_input(false)
@@ -323,6 +353,8 @@ func _on_toggle_button_pressed() -> void:
 
 
 func _connect_toggle_button() -> void:
+	if Engine.is_editor_hint():
+		return
 	if toggle_button == null:
 		return
 	if not toggle_button.pressed.is_connected(_on_toggle_button_pressed):
@@ -365,6 +397,8 @@ func _is_collapse_hidden() -> bool:
 
 ## 按当前展开状态就位或播放缩放动画。
 func _apply_zoom(animate: bool) -> void:
+	if Engine.is_editor_hint() and not is_previewing():
+		return
 	if not is_inside_tree():
 		return
 	_sync_pivot_offset()
@@ -444,6 +478,8 @@ func _on_zoom_animation_finished() -> void:
 
 ## 把 pivot 钉到原点比例处；缩放全程该点屏幕位置保持不变。
 func _sync_pivot_offset() -> void:
+	if Engine.is_editor_hint() and not is_previewing():
+		return
 	var basis_size := size
 	if basis_size.x <= 0.0 or basis_size.y <= 0.0:
 		basis_size = custom_minimum_size
@@ -455,6 +491,8 @@ func _sync_pivot_offset() -> void:
 
 ## 布局变化后重钉 pivot，避免下次缩放原点漂移。
 func _on_resized() -> void:
+	if Engine.is_editor_hint() and not is_previewing():
+		return
 	_sync_pivot_offset()
 
 
@@ -462,5 +500,159 @@ func _kill_zoom_tween() -> void:
 	if _zoom_tween != null and _zoom_tween.is_valid():
 		_zoom_tween.kill()
 	_zoom_tween = null
+
+#endregion
+
+
+#region 编辑器单次预览
+
+const _PREVIEW_GEOMETRY: Array[StringName] = [
+	&"layout_mode", &"grow_horizontal", &"grow_vertical",
+	&"anchor_left", &"anchor_top", &"anchor_right", &"anchor_bottom",
+	&"offset_left", &"offset_top", &"offset_right", &"offset_bottom",
+]
+const _PREVIEW_PRESENTATION: Array[StringName] = [
+	&"custom_minimum_size", &"size_flags_horizontal", &"size_flags_vertical",
+	&"clip_contents", &"mouse_filter", &"visible", &"modulate",
+	&"pivot_offset", &"scale", &"rotation",
+]
+var _preview_active: bool = false
+var _preview_generation: int = 0
+var _preview_snapshots: Array[Dictionary] = []
+
+
+func _preview_begin(properties: Array[StringName], capture_children: bool = false) -> bool:
+	if not Engine.is_editor_hint() or not self.is_inside_tree():
+		return false
+	var parent := self.get_parent_control()
+	if parent != null and not parent.is_visible_in_tree():
+		push_warning("动画预览：请先显示面板的父控件。")
+		return false
+	if self.size.x <= 0.0 or self.size.y <= 0.0:
+		push_warning("动画预览：面板尚无有效尺寸。")
+		return false
+	_preview_generation += 1
+	_preview_snapshots.clear()
+	_preview_capture(self, properties)
+	if capture_children:
+		_preview_capture_children(self)
+	_preview_active = true
+	return true
+
+
+func _preview_capture(node: Object, properties: Array[StringName]) -> void:
+	var values: Dictionary = {}
+	for property in properties:
+		var value: Variant = node.get(property)
+		values[property] = value.duplicate() if value is Array or value is Dictionary else value
+	_preview_snapshots.append({"node": weakref(node), "values": values})
+
+
+func _preview_capture_children(node: Node) -> void:
+	for child in node.get_children():
+		if child is Control:
+			_preview_capture(child, _PREVIEW_PRESENTATION + _PREVIEW_GEOMETRY)
+		_preview_capture_children(child)
+
+
+func _preview_restore() -> void:
+	_preview_active = false
+	_preview_generation += 1
+	var snapshots := _preview_snapshots
+	_preview_snapshots = []
+	# 内部状态由调用方列在几何前；子控件先恢复可见性/最小尺寸，再恢复矩形。
+	for snapshot in snapshots:
+		var node: Object = snapshot.node.get_ref()
+		if not is_instance_valid(node):
+			continue
+		for property in snapshot.values:
+			if property not in _PREVIEW_GEOMETRY:
+				node.set(property, snapshot.values[property])
+		if node is Control:
+			node.update_minimum_size()
+	for snapshot in snapshots:
+		var node: Object = snapshot.node.get_ref()
+		if not is_instance_valid(node):
+			continue
+		for property in _PREVIEW_GEOMETRY:
+			if snapshot.values.has(property):
+				node.set(property, snapshot.values[property])
+
+
+func _preview_is_current(token: int) -> bool:
+	return _preview_active and token == _preview_generation
+
+
+## Tween 被 kill 不发 finished；逐帧检查代次避免悬挂协程。超时返回 false，由面板恢复。
+func _preview_wait_tween(tween: Tween, token: int, timeout: float) -> bool:
+	var deadline := Time.get_ticks_msec() + int(maxf(timeout, 0.1) * 1000.0)
+	while _preview_is_current(token) and is_instance_valid(self) and self.is_inside_tree():
+		if tween == null or not tween.is_valid() or not tween.is_running():
+			return true
+		if Time.get_ticks_msec() >= deadline:
+			push_warning("动画预览等待超时，已停止并恢复。")
+			return false
+		await self.get_tree().process_frame
+	return false
+
+
+func _preview_wait_seconds(seconds: float, token: int) -> bool:
+	var deadline := Time.get_ticks_msec() + int(seconds * 1000.0)
+	while _preview_is_current(token) and is_instance_valid(self) and self.is_inside_tree():
+		if Time.get_ticks_msec() >= deadline:
+			return true
+		await self.get_tree().process_frame
+	return false
+
+
+## 仅在编辑器播放；再次点击从原编辑状态重新开始。
+func preview_play() -> void:
+	if not Engine.is_editor_hint():
+		return
+	preview_stop()
+	var properties: Array[StringName] = [&"_is_layout_ready", &"_authored_mouse_filter", &"is_expanded"]
+	properties.append_array(_PREVIEW_PRESENTATION)
+	properties.append_array(_PREVIEW_GEOMETRY)
+	if not _preview_begin(properties, false):
+		return
+	_preview_run(_preview_generation)
+
+
+func is_previewing() -> bool:
+	return _preview_active
+
+
+## 保存前和退出树同步恢复；不依赖 Inspector 选择或插件生命周期。
+func preview_stop() -> void:
+	if not is_previewing():
+		return
+	_preview_active = false
+	_kill_zoom_tween()
+	_preview_restore()
+	queue_redraw()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EDITOR_PRE_SAVE:
+		preview_stop()
+
+
+func _preview_run(token: int) -> void:
+	# 等当前布局帧完成；停止或重播后旧轮不能再初始化。
+	await get_tree().process_frame
+	if not _preview_is_current(token) or not is_inside_tree():
+		return
+	visible = true
+	_authored_mouse_filter = mouse_filter
+	is_expanded = false
+	_is_layout_ready = true
+	_apply_zoom(false)
+	expand()
+	if await _preview_wait_tween(_zoom_tween, token, animation_duration + 2.0):
+		if await _preview_wait_seconds(0.2, token):
+			collapse()
+			await _preview_wait_tween(_zoom_tween, token, animation_duration + 2.0)
+	if _preview_is_current(token):
+		preview_stop()
 
 #endregion

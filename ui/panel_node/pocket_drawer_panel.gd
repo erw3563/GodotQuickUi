@@ -1,3 +1,4 @@
+@tool
 class_name PocketDrawerPanel
 extends PanelContainer
 ## 屏幕内抽屉：展开显示完整内容，收起缩成预设大小的正方体。不贴屏幕边。
@@ -11,6 +12,10 @@ enum PivotCorner {
 	BOTTOM_LEFT,
 	BOTTOM_RIGHT,
 }
+
+@export_group("动画预览")
+@export_tool_button("播放一次", "Play") var preview_play_action: Callable = preview_play
+@export_tool_button("停止并恢复", "Stop") var preview_stop_action: Callable = preview_stop
 
 @export_group("抽屉")
 ## 收起方块钉在哪一角（右上、右下等）
@@ -84,7 +89,8 @@ var is_expanded: bool = true:
 		if is_expanded == value:
 			return
 		is_expanded = value
-		expanded_changed.emit(is_expanded)
+		if not Engine.is_editor_hint():
+			expanded_changed.emit(is_expanded)
 		if _is_layout_ready:
 			_apply_drawer_size(true)
 
@@ -102,6 +108,9 @@ var _is_collapse_correction_queued: bool = false
 
 
 func _ready() -> void:
+	if Engine.is_editor_hint():
+		_update_input_process()
+		return
 	_is_ready = true
 	_capture_authored_position()
 	_authored_size_flags_horizontal = size_flags_horizontal
@@ -121,6 +130,8 @@ func _ready() -> void:
 
 ## 收起时锁定为正方形；展开时按可见子控件测量（不可对 PanelContainer 虚函数使用 super）。
 func _get_minimum_size() -> Vector2:
+	if Engine.is_editor_hint() and not is_previewing():
+		return Vector2.ZERO
 	if _is_layout_ready and not is_expanded:
 		return Vector2(collapsed_size, collapsed_size)
 	var measured := Vector2.ZERO
@@ -139,6 +150,7 @@ func _get_minimum_size() -> Vector2:
 
 
 func _exit_tree() -> void:
+	preview_stop()
 	_disconnect_toggle_button()
 	_kill_drawer_tween()
 
@@ -165,6 +177,8 @@ func collapse() -> void:
 #region 交互输入
 
 func _process(_delta: float) -> void:
+	if Engine.is_editor_hint():
+		return
 	if not expand_on_mouse_hover or not _is_layout_ready:
 		return
 	if _is_mouse_inside_drawer():
@@ -174,6 +188,8 @@ func _process(_delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
 	if not toggle_on_click:
 		return
 	if not (event is InputEventMouseButton \
@@ -191,6 +207,8 @@ func _input(event: InputEvent) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
 	if toggle_input_action == &"":
 		return
 	if event.is_action_pressed(toggle_input_action):
@@ -199,6 +217,8 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
+	if Engine.is_editor_hint():
+		return
 	if not toggle_on_click:
 		return
 	if not (event is InputEventMouseButton \
@@ -241,6 +261,11 @@ func _is_mouse_inside_drawer() -> bool:
 
 
 func _update_input_process() -> void:
+	if Engine.is_editor_hint():
+		set_process(false)
+		set_process_input(false)
+		set_process_unhandled_input(false)
+		return
 	if not is_inside_tree():
 		set_process_input(false)
 		set_process_unhandled_input(false)
@@ -251,6 +276,11 @@ func _update_input_process() -> void:
 
 ## 仅在开启悬停展开时启用每帧检测
 func _update_hover_process() -> void:
+	if Engine.is_editor_hint():
+		set_process(false)
+		set_process_input(false)
+		set_process_unhandled_input(false)
+		return
 	set_process(expand_on_mouse_hover and is_inside_tree() and _is_layout_ready)
 
 
@@ -259,6 +289,8 @@ func _on_toggle_button_pressed() -> void:
 
 
 func _connect_toggle_button() -> void:
+	if Engine.is_editor_hint():
+		return
 	if toggle_button == null:
 		return
 	if not toggle_button.pressed.is_connected(_on_toggle_button_pressed):
@@ -336,6 +368,8 @@ func _measure_by_hugging_content() -> void:
 
 
 func _on_resized() -> void:
+	if Engine.is_editor_hint() and not is_previewing():
+		return
 	if _is_applying_size:
 		return
 	if _drawer_tween != null and _drawer_tween.is_running():
@@ -349,11 +383,16 @@ func _queue_collapsed_size_correction() -> void:
 	if _is_collapse_correction_queued:
 		return
 	_is_collapse_correction_queued = true
-	call_deferred("_correct_collapsed_size")
+	call_deferred("_correct_collapsed_size", _preview_generation if is_previewing() else -1)
 
 
 ## 消除父容器延迟布局对收起尺寸的覆盖。
-func _correct_collapsed_size() -> void:
+func _correct_collapsed_size(preview_token: int = -1) -> void:
+	if Engine.is_editor_hint():
+		if not is_previewing():
+			return
+		if preview_token >= 0 and not _preview_is_current(preview_token):
+			return
 	_is_collapse_correction_queued = false
 	if not is_inside_tree() or not _is_layout_ready or is_expanded:
 		return
@@ -369,12 +408,16 @@ func _correct_collapsed_size() -> void:
 
 ## 始终从左上角增减尺寸，钉住角只通过改 offset 实现，避免 GROW_BEGIN 把节点挪走。
 func _apply_grow_flags() -> void:
+	if Engine.is_editor_hint() and not is_previewing():
+		return
 	grow_horizontal = Control.GROW_DIRECTION_END
 	grow_vertical = Control.GROW_DIRECTION_END
 
 
 ## 收起时取消 FILL，避免被 VBox/HBox 拉成列宽；展开时恢复场景标志。
 func _apply_size_flags_for_state() -> void:
+	if Engine.is_editor_hint() and not is_previewing():
+		return
 	if not _is_ready:
 		return
 	if is_expanded:
@@ -425,6 +468,8 @@ func _measure_content_size() -> Vector2:
 
 
 func _apply_drawer_size(animate: bool) -> void:
+	if Engine.is_editor_hint() and not is_previewing():
+		return
 	if not is_inside_tree() or _is_applying_size:
 		return
 	if is_expanded:
@@ -558,6 +603,8 @@ func _kill_drawer_tween() -> void:
 
 
 func _draw() -> void:
+	if Engine.is_editor_hint() and not is_previewing():
+		return
 	if is_expanded or collapsed_title.is_empty():
 		return
 	var font := get_theme_default_font()
@@ -578,5 +625,170 @@ func _draw() -> void:
 		font_size,
 		Color.WHITE
 	)
+
+#endregion
+
+
+#region 编辑器单次预览
+
+const _PREVIEW_GEOMETRY: Array[StringName] = [
+	&"layout_mode", &"grow_horizontal", &"grow_vertical",
+	&"anchor_left", &"anchor_top", &"anchor_right", &"anchor_bottom",
+	&"offset_left", &"offset_top", &"offset_right", &"offset_bottom",
+]
+const _PREVIEW_PRESENTATION: Array[StringName] = [
+	&"custom_minimum_size", &"size_flags_horizontal", &"size_flags_vertical",
+	&"clip_contents", &"mouse_filter", &"visible", &"modulate",
+	&"pivot_offset", &"scale", &"rotation",
+]
+var _preview_active: bool = false
+var _preview_generation: int = 0
+var _preview_snapshots: Array[Dictionary] = []
+
+
+func _preview_begin(properties: Array[StringName], capture_children: bool = false) -> bool:
+	if not Engine.is_editor_hint() or not self.is_inside_tree():
+		return false
+	var parent := self.get_parent_control()
+	if parent != null and not parent.is_visible_in_tree():
+		push_warning("动画预览：请先显示面板的父控件。")
+		return false
+	if self.size.x <= 0.0 or self.size.y <= 0.0:
+		push_warning("动画预览：面板尚无有效尺寸。")
+		return false
+	_preview_generation += 1
+	_preview_snapshots.clear()
+	_preview_capture(self, properties)
+	if capture_children:
+		_preview_capture_children(self)
+	_preview_active = true
+	return true
+
+
+func _preview_capture(node: Object, properties: Array[StringName]) -> void:
+	var values: Dictionary = {}
+	for property in properties:
+		var value: Variant = node.get(property)
+		values[property] = value.duplicate() if value is Array or value is Dictionary else value
+	_preview_snapshots.append({"node": weakref(node), "values": values})
+
+
+func _preview_capture_children(node: Node) -> void:
+	for child in node.get_children():
+		if child is Control:
+			_preview_capture(child, _PREVIEW_PRESENTATION + _PREVIEW_GEOMETRY)
+		_preview_capture_children(child)
+
+
+func _preview_restore() -> void:
+	_preview_active = false
+	_preview_generation += 1
+	var snapshots := _preview_snapshots
+	_preview_snapshots = []
+	# 内部状态由调用方列在几何前；子控件先恢复可见性/最小尺寸，再恢复矩形。
+	for snapshot in snapshots:
+		var node: Object = snapshot.node.get_ref()
+		if not is_instance_valid(node):
+			continue
+		for property in snapshot.values:
+			if property not in _PREVIEW_GEOMETRY:
+				node.set(property, snapshot.values[property])
+		if node is Control:
+			node.update_minimum_size()
+	for snapshot in snapshots:
+		var node: Object = snapshot.node.get_ref()
+		if not is_instance_valid(node):
+			continue
+		for property in _PREVIEW_GEOMETRY:
+			if snapshot.values.has(property):
+				node.set(property, snapshot.values[property])
+
+
+func _preview_is_current(token: int) -> bool:
+	return _preview_active and token == _preview_generation
+
+
+## Tween 被 kill 不发 finished；逐帧检查代次避免悬挂协程。超时返回 false，由面板恢复。
+func _preview_wait_tween(tween: Tween, token: int, timeout: float) -> bool:
+	var deadline := Time.get_ticks_msec() + int(maxf(timeout, 0.1) * 1000.0)
+	while _preview_is_current(token) and is_instance_valid(self) and self.is_inside_tree():
+		if tween == null or not tween.is_valid() or not tween.is_running():
+			return true
+		if Time.get_ticks_msec() >= deadline:
+			push_warning("动画预览等待超时，已停止并恢复。")
+			return false
+		await self.get_tree().process_frame
+	return false
+
+
+func _preview_wait_seconds(seconds: float, token: int) -> bool:
+	var deadline := Time.get_ticks_msec() + int(seconds * 1000.0)
+	while _preview_is_current(token) and is_instance_valid(self) and self.is_inside_tree():
+		if Time.get_ticks_msec() >= deadline:
+			return true
+		await self.get_tree().process_frame
+	return false
+
+
+## 仅在编辑器播放；再次点击从原编辑状态重新开始。
+func preview_play() -> void:
+	if not Engine.is_editor_hint():
+		return
+	preview_stop()
+	var properties: Array[StringName] = [
+		&"_is_ready", &"_is_layout_ready", &"_is_applying_size", &"_content_size",
+		&"_authored_position", &"_pinned_corner_position", &"_authored_size_flags_horizontal",
+		&"_authored_size_flags_vertical", &"_is_collapse_correction_queued", &"is_expanded",
+	]
+	properties.append_array(_PREVIEW_PRESENTATION)
+	properties.append_array(_PREVIEW_GEOMETRY)
+	if not _preview_begin(properties, true):
+		return
+	_preview_run(_preview_generation)
+
+
+func is_previewing() -> bool:
+	return _preview_active
+
+
+## 保存前和退出树同步恢复；不依赖 Inspector 选择或插件生命周期。
+func preview_stop() -> void:
+	if not is_previewing():
+		return
+	_preview_active = false
+	_kill_drawer_tween()
+	_preview_restore()
+	queue_redraw()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EDITOR_PRE_SAVE:
+		preview_stop()
+
+
+func _preview_run(token: int) -> void:
+	# 等当前布局帧完成；停止或重播后旧轮不能再初始化。
+	await get_tree().process_frame
+	if not _preview_is_current(token) or not is_inside_tree():
+		return
+	visible = true
+	_is_ready = true
+	_capture_authored_position()
+	_authored_size_flags_horizontal = size_flags_horizontal
+	_authored_size_flags_vertical = size_flags_vertical
+	clip_contents = true
+	_apply_grow_flags()
+	_content_size = _measure_content_size()
+	_pinned_corner_position = _get_corner_position(_authored_position, _content_size)
+	is_expanded = false
+	_is_layout_ready = true
+	_apply_drawer_size(false)
+	expand()
+	if await _preview_wait_tween(_drawer_tween, token, animation_duration + 2.0):
+		if await _preview_wait_seconds(0.2, token):
+			collapse()
+			await _preview_wait_tween(_drawer_tween, token, animation_duration + 2.0)
+	if _preview_is_current(token):
+		preview_stop()
 
 #endregion
