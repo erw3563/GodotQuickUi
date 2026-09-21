@@ -197,7 +197,7 @@ func _input(event: InputEvent) -> void:
 			and event.button_index == MOUSE_BUTTON_LEFT):
 		return
 	if is_expanded:
-		if _should_collapse_from_outside_click():
+		if UIInteraction.is_blank_outside_click(self, toggle_button, _is_mouse_inside_drawer(), true):
 			collapse()
 			get_viewport().set_input_as_handled()
 		return
@@ -231,26 +231,6 @@ func _gui_input(event: InputEvent) -> void:
 	else:
 		expand()
 		accept_event()
-
-
-## 是否为栏外空白点击（点其它背包/按钮不收起）
-func _should_collapse_from_outside_click() -> bool:
-	if _is_mouse_inside_drawer():
-		return false
-	var hovered_control := get_viewport().gui_get_hovered_control()
-	if hovered_control == null:
-		return true
-	if hovered_control == self or is_ancestor_of(hovered_control):
-		return false
-	if toggle_button != null and (
-			hovered_control == toggle_button \
-			or toggle_button.is_ancestor_of(hovered_control)):
-		return false
-	if hovered_control is BaseButton:
-		return false
-	if hovered_control.mouse_filter == Control.MOUSE_FILTER_STOP:
-		return false
-	return true
 
 
 ## 鼠标是否在本抽屉可见范围内
@@ -383,7 +363,7 @@ func _queue_collapsed_size_correction() -> void:
 	if _is_collapse_correction_queued:
 		return
 	_is_collapse_correction_queued = true
-	call_deferred("_correct_collapsed_size", _preview_generation if is_previewing() else -1)
+	call_deferred("_correct_collapsed_size", _preview.generation if is_previewing() else -1)
 
 
 ## 消除父容器延迟布局对收起尺寸的覆盖。
@@ -391,7 +371,7 @@ func _correct_collapsed_size(preview_token: int = -1) -> void:
 	if Engine.is_editor_hint():
 		if not is_previewing():
 			return
-		if preview_token >= 0 and not _preview_is_current(preview_token):
+		if preview_token >= 0 and not _preview.is_current(preview_token):
 			return
 	_is_collapse_correction_queued = false
 	if not is_inside_tree() or not _is_layout_ready or is_expanded:
@@ -631,103 +611,7 @@ func _draw() -> void:
 
 #region 编辑器单次预览
 
-const _PREVIEW_GEOMETRY: Array[StringName] = [
-	&"layout_mode", &"grow_horizontal", &"grow_vertical",
-	&"anchor_left", &"anchor_top", &"anchor_right", &"anchor_bottom",
-	&"offset_left", &"offset_top", &"offset_right", &"offset_bottom",
-]
-const _PREVIEW_PRESENTATION: Array[StringName] = [
-	&"custom_minimum_size", &"size_flags_horizontal", &"size_flags_vertical",
-	&"clip_contents", &"mouse_filter", &"visible", &"modulate",
-	&"pivot_offset", &"scale", &"rotation",
-]
-var _preview_active: bool = false
-var _preview_generation: int = 0
-var _preview_snapshots: Array[Dictionary] = []
-
-
-func _preview_begin(properties: Array[StringName], capture_children: bool = false) -> bool:
-	if not Engine.is_editor_hint() or not self.is_inside_tree():
-		return false
-	var parent := self.get_parent_control()
-	if parent != null and not parent.is_visible_in_tree():
-		push_warning("动画预览：请先显示面板的父控件。")
-		return false
-	if self.size.x <= 0.0 or self.size.y <= 0.0:
-		push_warning("动画预览：面板尚无有效尺寸。")
-		return false
-	_preview_generation += 1
-	_preview_snapshots.clear()
-	_preview_capture(self, properties)
-	if capture_children:
-		_preview_capture_children(self)
-	_preview_active = true
-	return true
-
-
-func _preview_capture(node: Object, properties: Array[StringName]) -> void:
-	var values: Dictionary = {}
-	for property in properties:
-		var value: Variant = node.get(property)
-		values[property] = value.duplicate() if value is Array or value is Dictionary else value
-	_preview_snapshots.append({"node": weakref(node), "values": values})
-
-
-func _preview_capture_children(node: Node) -> void:
-	for child in node.get_children():
-		if child is Control:
-			_preview_capture(child, _PREVIEW_PRESENTATION + _PREVIEW_GEOMETRY)
-		_preview_capture_children(child)
-
-
-func _preview_restore() -> void:
-	_preview_active = false
-	_preview_generation += 1
-	var snapshots := _preview_snapshots
-	_preview_snapshots = []
-	# 内部状态由调用方列在几何前；子控件先恢复可见性/最小尺寸，再恢复矩形。
-	for snapshot in snapshots:
-		var node: Object = snapshot.node.get_ref()
-		if not is_instance_valid(node):
-			continue
-		for property in snapshot.values:
-			if property not in _PREVIEW_GEOMETRY:
-				node.set(property, snapshot.values[property])
-		if node is Control:
-			node.update_minimum_size()
-	for snapshot in snapshots:
-		var node: Object = snapshot.node.get_ref()
-		if not is_instance_valid(node):
-			continue
-		for property in _PREVIEW_GEOMETRY:
-			if snapshot.values.has(property):
-				node.set(property, snapshot.values[property])
-
-
-func _preview_is_current(token: int) -> bool:
-	return _preview_active and token == _preview_generation
-
-
-## Tween 被 kill 不发 finished；逐帧检查代次避免悬挂协程。超时返回 false，由面板恢复。
-func _preview_wait_tween(tween: Tween, token: int, timeout: float) -> bool:
-	var deadline := Time.get_ticks_msec() + int(maxf(timeout, 0.1) * 1000.0)
-	while _preview_is_current(token) and is_instance_valid(self) and self.is_inside_tree():
-		if tween == null or not tween.is_valid() or not tween.is_running():
-			return true
-		if Time.get_ticks_msec() >= deadline:
-			push_warning("动画预览等待超时，已停止并恢复。")
-			return false
-		await self.get_tree().process_frame
-	return false
-
-
-func _preview_wait_seconds(seconds: float, token: int) -> bool:
-	var deadline := Time.get_ticks_msec() + int(seconds * 1000.0)
-	while _preview_is_current(token) and is_instance_valid(self) and self.is_inside_tree():
-		if Time.get_ticks_msec() >= deadline:
-			return true
-		await self.get_tree().process_frame
-	return false
+var _preview := AnimationPreview.new()
 
 
 ## 仅在编辑器播放；再次点击从原编辑状态重新开始。
@@ -740,24 +624,23 @@ func preview_play() -> void:
 		&"_authored_position", &"_pinned_corner_position", &"_authored_size_flags_horizontal",
 		&"_authored_size_flags_vertical", &"_is_collapse_correction_queued", &"is_expanded",
 	]
-	properties.append_array(_PREVIEW_PRESENTATION)
-	properties.append_array(_PREVIEW_GEOMETRY)
-	if not _preview_begin(properties, true):
+	properties.append_array(AnimationPreview.PRESENTATION_PROPERTIES)
+	properties.append_array(AnimationPreview.GEOMETRY_PROPERTIES)
+	if not _preview.begin(self, properties, true):
 		return
-	_preview_run(_preview_generation)
+	_preview_run(_preview.generation)
 
 
 func is_previewing() -> bool:
-	return _preview_active
+	return _preview.is_active()
 
 
 ## 保存前和退出树同步恢复；不依赖 Inspector 选择或插件生命周期。
 func preview_stop() -> void:
 	if not is_previewing():
 		return
-	_preview_active = false
 	_kill_drawer_tween()
-	_preview_restore()
+	_preview.stop()
 	queue_redraw()
 
 
@@ -769,7 +652,7 @@ func _notification(what: int) -> void:
 func _preview_run(token: int) -> void:
 	# 等当前布局帧完成；停止或重播后旧轮不能再初始化。
 	await get_tree().process_frame
-	if not _preview_is_current(token) or not is_inside_tree():
+	if not _preview.is_current(token) or not is_inside_tree():
 		return
 	visible = true
 	_is_ready = true
@@ -784,11 +667,11 @@ func _preview_run(token: int) -> void:
 	_is_layout_ready = true
 	_apply_drawer_size(false)
 	expand()
-	if await _preview_wait_tween(_drawer_tween, token, animation_duration + 2.0):
-		if await _preview_wait_seconds(0.2, token):
+	if await _preview.wait_tween(self, _drawer_tween, token, animation_duration + 2.0):
+		if await _preview.wait_seconds(self, 0.2, token):
 			collapse()
-			await _preview_wait_tween(_drawer_tween, token, animation_duration + 2.0)
-	if _preview_is_current(token):
+			await _preview.wait_tween(self, _drawer_tween, token, animation_duration + 2.0)
+	if _preview.is_current(token):
 		preview_stop()
 
 #endregion

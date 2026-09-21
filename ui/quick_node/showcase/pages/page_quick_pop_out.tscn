@@ -1,7 +1,9 @@
 [gd_scene format=3 uid="uid://brmlf7fm3iwme"]
 
 [ext_resource type="Script" uid="uid://bynsgdyfwx3kh" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_pop_out.gd" id="1_ntse2"]
-[ext_resource type="Script" uid="uid://bca3v3rs67bt7" path="res://addons/gdbase/ui/quick_node/quick_pop_out.gd" id="2_3vnsh"]
+[ext_resource type="Script" uid="uid://b3vhwawofh3d7" path="res://addons/gdbase/ui/quick_node/quick_pop_in.gd" id="2_popin"]
+[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_ui_anim_host.gd" id="3_host"]
+[ext_resource type="Script" uid="uid://bca3v3rs67bt7" path="res://addons/gdbase/ui/quick_node/quick_pop_out.gd" id="4_popout"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_qnkys"]
 content_margin_left = 14.0
@@ -23,6 +25,7 @@ script = ExtResource("1_ntse2")
 
 [node name="TargetCard" type="Panel" parent="." unique_id=1415685483]
 unique_name_in_owner = true
+visible = false
 custom_minimum_size = Vector2(420, 190)
 layout_mode = 0
 offset_left = 430.0
@@ -41,12 +44,6 @@ offset_bottom = 10.0
 theme_override_font_sizes/font_size = 15
 text = "被驱动的面板"
 
-[node name="Popper" type="Node" parent="TargetCard" unique_id=704200569 node_paths=PackedStringArray("ui")]
-ui = NodePath("..")
-unique_name_in_owner = true
-script = ExtResource("2_3vnsh")
-enter_direction = 1
-
 [node name="Toolbar" type="HBoxContainer" parent="." unique_id=655624200]
 layout_mode = 0
 offset_left = 430.0
@@ -56,6 +53,11 @@ offset_bottom = 380.0
 theme_override_constants/separation = 8
 
 [node name="DirectionOption" type="OptionButton" parent="Toolbar" unique_id=754403521]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+
+[node name="OriginOption" type="OptionButton" parent="Toolbar" unique_id=754403522]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
@@ -72,6 +74,29 @@ layout_mode = 2
 focus_mode = 0
 text = "弹出"
 
+[node name="EnterHost" type="Node" parent="." unique_id=704200570 node_paths=PackedStringArray("ui")]
+unique_name_in_owner = true
+script = ExtResource("3_host")
+ui = NodePath("../TargetCard")
+animate_entrance = false
+
+[node name="PopperIn" type="Node" parent="EnterHost" unique_id=704200571 node_paths=PackedStringArray("ui")]
+unique_name_in_owner = true
+script = ExtResource("2_popin")
+ui = NodePath("../../TargetCard")
+
+[node name="ExitHost" type="Node" parent="." unique_id=704200572 node_paths=PackedStringArray("ui")]
+unique_name_in_owner = true
+script = ExtResource("3_host")
+ui = NodePath("../TargetCard")
+animate_entrance = false
+
+[node name="PopperOut" type="Node" parent="ExitHost" unique_id=704200573 node_paths=PackedStringArray("ui")]
+unique_name_in_owner = true
+script = ExtResource("4_popout")
+ui = NodePath("../../TargetCard")
+target_ratio = Vector2(0.5, 1.5)
+
 [node name="Hint" type="Label" parent="." unique_id=1011534653]
 layout_mode = 0
 anchor_top = 1.0
@@ -82,5 +107,5 @@ offset_top = -64.0
 offset_right = -24.0
 offset_bottom = -24.0
 theme_override_font_sizes/font_size = 14
-text = "选方向后点「弹出/收回」：面板从屏幕外沿所选方向飞入/飞出并淡入淡出。"
+text = "选贴合点与离场端点后点「弹出/收回」：卡片从屏下飞入屏幕中心，再从当前位置飞出到所选屏外端点。"
 autowrap_mode = 3

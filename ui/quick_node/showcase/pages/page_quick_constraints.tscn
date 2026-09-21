@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://dub3gkvlgf0ck"]
 
 [ext_resource type="Script" uid="uid://cxin5e0npxqlw" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_constraints.gd" id="1_5jp2j"]
-[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_host.gd" id="2_host"]
+[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_ui_anim_host.gd" id="2_host"]
 [ext_resource type="Script" uid="uid://ceblvo83akkn8" path="res://addons/gdbase/ui/quick_node/quick_drag.gd" id="3_oeqc1"]
 [ext_resource type="Script" uid="uid://r6t41m2p2q7b" path="res://addons/gdbase/ui/quick_node/quick_constraints.gd" id="4_stage"]
 
@@ -52,12 +52,10 @@ theme_override_font_sizes/font_size = 15
 text = "拖我
 （会被四角标记拦住）"
 
-[node name="QuickHost" type="Node" parent="Card"]
+[node name="QuickUiAnimHost" type="Node" parent="Card"]
 script = ExtResource("2_host")
-create_drag = true
-create_constraints = true
 
-[node name="QuickConstraints" type="Node" parent="Card/QuickHost" node_paths=PackedStringArray("ui", "mark_max_x_control", "mark_min_x_control", "mark_max_y_control", "mark_min_y_control")]
+[node name="QuickConstraints" type="Node" parent="Card/QuickUiAnimHost" node_paths=PackedStringArray("ui", "mark_max_x_control", "mark_min_x_control", "mark_max_y_control", "mark_min_y_control")]
 ui = NodePath("../..")
 mark_max_x_control = NodePath("../../../MarkBR")
 mark_min_x_control = NodePath("../../../MarkTL")
@@ -69,10 +67,11 @@ mark_min_x_offset = 6.0
 mark_max_y_offset = -126.0
 mark_min_y_offset = 6.0
 
-[node name="QuickDrag" type="Node" parent="Card/QuickHost" node_paths=PackedStringArray("dragged_ui", "clickable_ui")]
+[node name="QuickDrag" type="Node" parent="Card/QuickUiAnimHost" node_paths=PackedStringArray("dragged_ui", "clickable_ui", "placer")]
 script = ExtResource("3_oeqc1")
 dragged_ui = NodePath("../..")
 clickable_ui = NodePath("../..")
+placer = NodePath("..")
 
 [node name="Frame" type="Panel" parent="." unique_id=1788828133]
 layout_mode = 0
@@ -109,5 +108,5 @@ offset_top = -64.0
 offset_right = -24.0
 offset_bottom = -24.0
 theme_override_font_sizes/font_size = 14
-text = "自由拖动卡片——拖拽落笔经 QuickHost 中介以交互意图裁决、由 QuickConstraints stage 钳制后唯一落笔，始终被夹在四角浅色标记框内（基于标记控件+偏移量）。"
+text = "自由拖动卡片——拖拽落笔经 QuickUiAnimHost 中介以交互意图裁决、由 QuickConstraints stage 钳制后唯一落笔，始终被夹在四角浅色标记框内（基于标记控件+偏移量）。"
 autowrap_mode = 3

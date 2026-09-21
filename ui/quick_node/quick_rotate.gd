@@ -1,238 +1,167 @@
+@tool
 class_name QuickRotate
 extends Node
-## 旋转组件：把宿主 [Control] 从倾斜角旋转回正入场、转回倾斜退场；可与 [class QuickZoom]
-## 组合「放大 + 旋转回正」的合成出场演出——两者互不认识，各自只动自己的属性，
-## 场景把 QuickZoom 的 expanded_changed 连到 [method set_upright] 即同步起播。
-## 所有权契约：只驱动宿主的 rotation，不改 scale / pivot_offset / modulate.a / visible /
-## mouse_filter / global_position / size，真实布局全程不变；因此与 [class QuickZoom]
-## （驱动缩放）、[class QuickConstraints]（含 continuous）和 [class QuickPopOut]（驱动位置）
-## 互不冲突，可叠加挂在同一控件上。旋转绕宿主当前 pivot_offset
-## （配合 QuickZoom 时即其 origin_ratio 钉扎的原点）。
+## 旋转演出件：把宿主 [Control] 从当前旋转播放到 [member target_rotation_degrees]。
+## 统一播放契约 play＋play_finished；[method is_rotating] 为播放查询。
+## 所有权契约：只驱动 [member ui] 的 rotation，不改 scale / pivot_offset / modulate.a /
+## visible / mouse_filter / position / size；因此与 QuickZoom、QuickWobble、位置类演出件
+## 可叠加挂在同一控件上。起点即宿主的当前旋转角。
+## 编辑器内提供 Inspector「动画预览」单次演出（机制见 ui/core AnimationPreview）。
 
-signal upright_changed(is_upright: bool)
-signal rotate_finished(is_upright: bool)
+signal play_finished
 
 ## 要驱动的宿主控件；为空则尝试使用本组件的父节点（若为 Control）。
 @export var ui: Control
 
-@export_group("旋转")
-## 入场起始倾斜角，兼退场终点角（度）；符号决定旋转方向，0 则无旋转演出。
-@export_range(-1080.0, 1080.0, 0.1, "degrees") var start_rotation_degrees: float = -25.0:
-	set(value):
-		start_rotation_degrees = value
-		# 静息在倾斜态时改角，即刻换到新倾斜角（下次入场方向随之改变）。
-		if _is_layout_ready and not is_upright and not is_rotating and ui != null:
-			ui.rotation_degrees = value
-
-## 初始是否转正
-@export var start_upright: bool = true
-
-## 初始转正时是否播旋转入场动效（false 则直接就位）
-@export var animate_entrance: bool = true
-
-## 转正/转倾斜动画时长（秒）
-@export_range(0.0, 2.0, 0.01) var animation_duration: float = 0.25
-
-## 动画过渡类型（默认 BACK 配 EASE_OUT：越过 0 过冲再恰好回正）
-@export var animation_transition: Tween.TransitionType = Tween.TRANS_BACK
-
-## 转正动画缓动类型（转倾斜固定用 EASE_IN 转回倾斜）
+@export_group("播放效果")
+## 目标旋转角（度）：play 从当前角到达该值。
+@export_range(-720.0, 720.0, 0.1, "degrees", "or_less", "or_greater") var target_rotation_degrees: float = 0.0
+## 旋转动画时长（秒）。
+@export_range(0.0, 3.0, 0.01) var animation_duration: float = 0.32
+## 动画过渡类型。
+@export var animation_transition: Tween.TransitionType = Tween.TRANS_CUBIC
+## 动画缓动类型。
 @export var animation_ease: Tween.EaseType = Tween.EASE_OUT
 
-@export_group("交互")
-## 用于切换的 InputMap 动作名（留空则不响应按键）
-@export var toggle_input_action: StringName = &"":
-	set(value):
-		toggle_input_action = value
-		_update_input_process()
+@export_group("动画预览")
+## 仅编辑器生效的单次演出预览；运行时调用无副作用。
+@export_tool_button("播放一次", "Play") var preview_play_action: Callable = preview_play
+@export_tool_button("停止并恢复", "Stop") var preview_stop_action: Callable = preview_stop
 
-## 可选：绑定按钮进行切换
-@export var toggle_button: BaseButton:
-	set(value):
-		_disconnect_toggle_button()
-		toggle_button = value
-		_connect_toggle_button()
-
-## 当前是否转正
-var is_upright: bool = true:
-	set(value):
-		if is_upright == value:
-			return
-		is_upright = value
-		upright_changed.emit(is_upright)
-		if _is_layout_ready:
-			_apply_rotation(true)
-
-## 是否正在播放旋转动画
-var is_rotating: bool:
-	get:
-		return _rotation_tween != null and _rotation_tween.is_running()
-
-var _rotation_tween: Tween
-var _is_layout_ready: bool = false
+var _tween: Tween
+## 宿主级整树预览会话标记（编辑器内由 QuickUiAnimHost 开关）。
+var _host_preview_active := false
 
 
-func _ready() -> void:
-	_resolve_ui()
-	if ui == null:
-		return
-	# 布局就绪前先落到倾斜角，避免入场动画开始前闪现转正态（可见性归外部所有者）。
-	if not (start_upright and not animate_entrance):
-		ui.rotation_degrees = start_rotation_degrees
-	is_upright = start_upright
-	_connect_toggle_button()
-	_update_input_process()
-	_initialize_rotation_state()
+## 自身旋转是否进行中。
+func is_rotating() -> bool:
+	return _tween != null and _tween.is_valid() and _tween.is_running()
 
 
 func _exit_tree() -> void:
-	_disconnect_toggle_button()
-	_kill_rotation_tween()
+	preview_stop()
+	_kill_tween()
 
 
-#region 公开接口
-
-## 切换转正/倾斜
-func toggle() -> void:
-	is_upright = not is_upright
-
-
-## 从倾斜角旋转回正（入场）
-func straighten() -> void:
-	is_upright = true
-
-
-## 从转正旋转回倾斜角（退场）
-func tilt() -> void:
-	is_upright = false
-
-## 统一播放入口（与 QuickPopOut / QuickZoom 同名，宿主经此成组驱动演出）：
-## 播放入场动画（倾斜角旋转回正）；已转正则无动作（状态机守卫）。
-func play_entrance() -> void:
-	straighten()
-
-## 统一播放入口：播放退场动画（转回倾斜角）；已倾斜则无动作。
-func play_exit() -> void:
-	tilt()
+## 统一播放契约：从当前旋转角到达 [member target_rotation_degrees]；已处目标且未在
+## 播放则无操作。返回是否实际起播；播放中再次 play 杀旧建新、从当前角重播。
+func play() -> bool:
+	_resolve_ui()
+	if ui == null:
+		return false
+	if not is_rotating() and is_equal_approx(ui.rotation_degrees, target_rotation_degrees):
+		return false
+	_run_tween()
+	return true
 
 
-## 状态转接入口：签名与 [class QuickZoom] 的 expanded_changed(is_expanded) 对齐，
-## 场景里把该信号直接连到这里即得同步演出。
-func set_upright(value: bool) -> void:
-	is_upright = value
-
-#endregion
+## 收回旋转写入：取消进行中的旋转，角停在当前帧（宿主取消树序播放时调用）。
+func interrupt() -> void:
+	_kill_tween()
 
 
-#region 交互输入
-
-func _unhandled_input(event: InputEvent) -> void:
-	if toggle_input_action == &"":
-		return
-	if event.is_action_pressed(toggle_input_action):
-		toggle()
-		get_viewport().set_input_as_handled()
-
-
-func _update_input_process() -> void:
-	if not is_inside_tree():
-		set_process_unhandled_input(false)
-		return
-	set_process_unhandled_input(toggle_input_action != &"")
-
-
-func _on_toggle_button_pressed() -> void:
-	toggle()
-
-
-func _connect_toggle_button() -> void:
-	if toggle_button == null:
-		return
-	if not toggle_button.pressed.is_connected(_on_toggle_button_pressed):
-		toggle_button.pressed.connect(_on_toggle_button_pressed)
-
-
-func _disconnect_toggle_button() -> void:
-	if toggle_button == null:
-		return
-	if toggle_button.pressed.is_connected(_on_toggle_button_pressed):
-		toggle_button.pressed.disconnect(_on_toggle_button_pressed)
-
-#endregion
-
-
-#region 旋转与动画
-
-## 等布局定型后，再按初始状态就位或播入场动效。
-func _initialize_rotation_state() -> void:
-	if not is_inside_tree():
-		return
-	await QuickUI.layout_settled(self)
-	if not is_inside_tree():
-		return
-	_is_layout_ready = true
-	_apply_rotation(is_upright and animate_entrance)
-
-
-## 按当前转正状态就位或播放旋转动画。
-func _apply_rotation(animate: bool) -> void:
-	if ui == null or not ui.is_inside_tree():
-		return
-	if is_upright:
-		if animate and animation_duration > 0.0:
-			_animate_rotation(0.0, true)
-			return
-		_kill_rotation_tween()
-		ui.rotation_degrees = 0.0
-		rotate_finished.emit(true)
-		return
-	if animate and animation_duration > 0.0:
-		_animate_rotation(start_rotation_degrees, false)
-		return
-	_kill_rotation_tween()
-	ui.rotation_degrees = start_rotation_degrees
-	rotate_finished.emit(false)
-
-
-## 播放旋转动画：转正越过 0 过冲后恰好落 0，倾斜加速转回起始角。
-func _animate_rotation(target_degrees: float, straightening: bool) -> void:
-	_kill_rotation_tween()
-	_rotation_tween = ui.create_tween()
-	_rotation_tween.set_trans(animation_transition)
-	_rotation_tween.set_ease(animation_ease if straightening else Tween.EASE_IN)
-	_rotation_tween.set_parallel(true)
-	_rotation_tween.tween_method(
-		_set_rotation_degrees, ui.rotation_degrees, target_degrees, animation_duration
-	)
-	_rotation_tween.chain().tween_callback(_on_rotation_animation_finished)
-
-
-func _set_rotation_degrees(value: float) -> void:
+func _run_tween() -> void:
+	_kill_tween()
 	if ui == null:
 		return
-	ui.rotation_degrees = value
+	if animation_duration <= 0.0:
+		ui.rotation_degrees = target_rotation_degrees
+		_emit_finished()
+		return
+	_tween = create_tween()
+	_tween.set_trans(animation_transition).set_ease(animation_ease)
+	_tween.tween_property(ui, "rotation_degrees", target_rotation_degrees, animation_duration)
+	_tween.finished.connect(func():
+		if ui != null:
+			ui.rotation_degrees = target_rotation_degrees
+		_emit_finished(), CONNECT_ONE_SHOT)
 
 
-## 动画结束落终态：转正精确归 0，倾斜精确落起始角。
-func _on_rotation_animation_finished() -> void:
-	_rotation_tween = null
-	if ui != null:
-		ui.rotation_degrees = 0.0 if is_upright else start_rotation_degrees
-	rotate_finished.emit(is_upright)
+func _kill_tween() -> void:
+	if _tween != null and _tween.is_valid():
+		_tween.kill()
+	_tween = null
 
 
-func _kill_rotation_tween() -> void:
-	if _rotation_tween != null and _rotation_tween.is_valid():
-		_rotation_tween.kill()
-	_rotation_tween = null
-
-
-## 若未指定 ui，则当父节点为 Control 时将其作为驱动目标。
 func _resolve_ui() -> void:
 	if ui != null:
 		return
-	var p := get_parent()
-	if p is Control:
-		ui = p as Control
+	var parent_node := get_parent()
+	if parent_node is Control:
+		ui = parent_node as Control
+
+
+func _emit_finished() -> void:
+	if not Engine.is_editor_hint() or _host_preview_active:
+		play_finished.emit()
+
+
+func _begin_host_preview_session() -> void:
+	_host_preview_active = true
+
+
+func _end_host_preview_session() -> void:
+	_host_preview_active = false
+	_kill_tween()
+
+
+#region 编辑器单次预览
+
+var _preview := AnimationPreview.new()
+
+
+## 仅在编辑器播放一次：从当前角到达目标后恢复编辑状态。
+func preview_play() -> void:
+	if not Engine.is_editor_hint():
+		return
+	preview_stop()
+	_stop_sibling_previews()
+	_resolve_ui()
+	if ui == null:
+		push_warning("QuickRotate：目标控件缺失（ui 未导出且父节点不是 Control），无法预览。")
+		return
+	var properties: Array[StringName] = []
+	properties.append_array(AnimationPreview.PRESENTATION_PROPERTIES)
+	properties.append_array(AnimationPreview.GEOMETRY_PROPERTIES)
+	if not _preview.begin(ui, properties, false):
+		return
+	_preview_run(_preview.generation)
+
+
+func is_previewing() -> bool:
+	return _preview.is_active()
+
+
+func preview_stop() -> void:
+	if not is_previewing():
+		return
+	_kill_tween()
+	_preview.stop()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_EDITOR_PRE_SAVE:
+		preview_stop()
+
+
+func _stop_sibling_previews() -> void:
+	var parent_node := get_parent()
+	if parent_node == null:
+		return
+	if parent_node.has_method("preview_stop"):
+		parent_node.call("preview_stop")
+	for child in parent_node.get_children():
+		if child != self and child.has_method("preview_stop"):
+			child.call("preview_stop")
+
+
+func _preview_run(token: int) -> void:
+	await get_tree().process_frame
+	if not _preview.is_current(token) or not is_inside_tree():
+		return
+	play()
+	await _preview.wait_tween(self, _tween, token, animation_duration + 2.0)
+	if _preview.is_current(token):
+		preview_stop()
 
 #endregion

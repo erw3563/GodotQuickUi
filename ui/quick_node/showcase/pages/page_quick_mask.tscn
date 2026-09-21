@@ -1,0 +1,111 @@
+[gd_scene format=3 uid="uid://bxmc6o2bwd77i"]
+
+[ext_resource type="Script" uid="uid://cd3tn7vbav8nk" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_mask.gd" id="1_a6hvc"]
+[ext_resource type="Shader" uid="uid://biv3ostb7v7cy" path="res://addons/gdbase/ui/quick_node/texture_mask/texture_mask.gdshader" id="2_1wsqc"]
+[ext_resource type="Script" uid="uid://difslqnqtqevy" path="res://addons/gdbase/ui/quick_node/quick_mask.gd" id="3_kotct"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_b2rg5"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.45, 0.3, 0.55, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_tr61n"]
+shader = ExtResource("2_1wsqc")
+shader_parameter/progress = 1.0
+shader_parameter/inverted = false
+shader_parameter/has_mask = false
+shader_parameter/use_content = false
+shader_parameter/tint = Color(0.38, 0.68, 0.95, 1)
+
+[sub_resource type="Gradient" id="Gradient_60oio"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_l1prj"]
+gradient = SubResource("Gradient_60oio")
+
+[node name="PageQuickMask" type="Control" unique_id=2053709632]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_a6hvc")
+
+[node name="Stage" type="Panel" parent="." unique_id=990026040]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 220)
+layout_mode = 0
+offset_left = 430.0
+offset_top = 140.0
+offset_right = 810.0
+offset_bottom = 360.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_b2rg5")
+
+[node name="Caption" type="Label" parent="Stage" unique_id=1248056414]
+layout_mode = 0
+offset_right = 270.0
+offset_bottom = 45.0
+theme_override_font_sizes/font_size = 15
+text = "QuickMask 覆盖在这张卡片上
+（ui 指向 Stage，矩形自动跟随）"
+
+[node name="Mask" type="TextureRect" parent="Stage" unique_id=2068691301]
+unique_name_in_owner = true
+material = SubResource("ShaderMaterial_tr61n")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_l1prj")
+expand_mode = 1
+script = ExtResource("3_kotct")
+ui = NodePath("..")
+tint = Color(0.38, 0.68, 0.95, 1)
+progress = 1.0
+animation_duration = 0.6
+
+[node name="Toolbar" type="HBoxContainer" parent="." unique_id=1791095616]
+layout_mode = 0
+theme_override_constants/separation = 8
+
+[node name="ButtonShow" type="Button" parent="Toolbar" unique_id=1151710251]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "显示"
+
+[node name="ButtonHide" type="Button" parent="Toolbar" unique_id=1232996503]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "隐藏"
+
+[node name="ButtonPattern" type="Button" parent="Toolbar" unique_id=1928380884]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "换图案"
+
+[node name="Hint" type="Label" parent="." unique_id=782184550]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -64.0
+offset_right = -24.0
+offset_bottom = -24.0
+theme_override_font_sizes/font_size = 14
+text = "QuickMask 是 TextureRect 本体即视觉的遮罩：灰度遮罩图案决定显隐形状，progress 是被驱动的进度轴，检查器上的 target_progress 声明目标端（0 完全隐藏 / 1 完全显示），统一播放契约 play() 从当前进度到达目标、已处目标端时先归位到另一端点再起播——双向由两个目标端不同的实例分属两个宿主表达。内置 8 种图案（set_pattern / PATTERNS），也可自定义 mask_texture 与 content_texture（图片显隐）。设置 ui 后遮罩矩形自动对齐并持续跟随目标（本页指向 Stage；位移与缩放都贴合），为空时自呈现；挂进 QuickUiAnimHost 即成为树序时间线的一个演出步骤，目标为完全显示时装载期先瞬时铺隐藏。"
+autowrap_mode = 3

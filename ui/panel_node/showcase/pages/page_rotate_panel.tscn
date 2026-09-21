@@ -39,9 +39,6 @@ offset_bottom = 110.0
 grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("2_rotpanel")
-target_rotation_1 = -5.0
-target_rotation_2 = 5.0
-target_rotation_3 = 0.0
 
 [node name="Content" type="VBoxContainer" parent="RotatePanel" unique_id=1440190848]
 layout_mode = 2
@@ -55,8 +52,8 @@ text = "RotatePanel"
 [node name="Note" type="Label" parent="RotatePanel/Content" unique_id=1397388258]
 layout_mode = 2
 theme_override_font_sizes/font_size = 14
-text = "触发直接连播 常态→1→2→3→常态
-入场自起始角转往常态角"
+text = "交互触发一次旋转晃动：依次停靠序列各角后收常态角
+（播放中再触发从头重播）"
 
 [node name="Toolbar" type="HBoxContainer" parent="." unique_id=1645648383]
 layout_mode = 0
@@ -70,31 +67,31 @@ theme_override_constants/separation = 8
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "常态"
+text = "停止归零"
 
 [node name="ButtonPose1" type="Button" parent="Toolbar" unique_id=578016220]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "目标1"
+text = "序列=轻晃"
 
 [node name="ButtonPose2" type="Button" parent="Toolbar" unique_id=1676883611]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "目标2"
+text = "序列=往返"
 
 [node name="ButtonPose3" type="Button" parent="Toolbar" unique_id=648190932]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "目标3"
+text = "序列=整圈"
 
 [node name="ButtonPlaySequence" type="Button" parent="Toolbar" unique_id=519408025]
 unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
-text = "连播序列"
+text = "晃一次"
 
 [node name="Toolbar2" type="HBoxContainer" parent="." unique_id=1700611839]
 layout_mode = 0

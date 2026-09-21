@@ -1,6 +1,6 @@
 class_name QuickConstraints
 extends Node
-## 位置钳制 stage：宿主 [class QuickHost] 落笔管道的加工者，按标记控件边界与
+## 位置钳制 stage：宿主 [class QuickUiAnimHost] 落笔管道的加工者，按标记控件边界与
 ## 视口偏移把提议钳回合法驻留区域（apply_place 契约：只改提议、不落笔）。
 ## continuous 回收以 PLACEMENT 意图经宿主中介重钳，演出租约期间被意图表自动挂起。
 

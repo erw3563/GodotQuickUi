@@ -1,0 +1,311 @@
+[gd_scene format=3 uid="uid://cbnsyxsstw0um"]
+
+[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_ui_anim_host.gd" id="1_c1bpr"]
+[ext_resource type="Script" uid="uid://b1g5y8nnfmlvb" path="res://addons/gdbase/ui/quick_node/quick_zoom.gd" id="2_fk314"]
+[ext_resource type="Script" uid="uid://b3vhwawofh3d7" path="res://addons/gdbase/ui/quick_node/quick_pop_in.gd" id="3_44k1i"]
+[ext_resource type="Script" uid="uid://l5j44igh7cty" path="res://addons/gdbase/ui/quick_node/quick_show.gd" id="3_mswor"]
+[ext_resource type="Script" uid="uid://gslvdwntkuyh" path="res://addons/gdbase/ui/quick_node/quick_parallel.gd" id="4_idg80"]
+[ext_resource type="Script" uid="uid://s5whn1tbjmil" path="res://addons/gdbase/inventory/ui/inventory_host/inventory_host.gd" id="5_c37va"]
+[ext_resource type="Shader" uid="uid://biv3ostb7v7cy" path="res://addons/gdbase/ui/quick_node/texture_mask/texture_mask.gdshader" id="6_6jyxj"]
+[ext_resource type="Texture2D" uid="uid://xc8f1catjpn3" path="res://assets/UIBorder/Panel/panel-024.png" id="6_261ed"]
+[ext_resource type="Script" uid="uid://ct6sidajifh87" path="res://addons/gdbase/inventory/core/item/item_instance_data.gd" id="6_mswor"]
+[ext_resource type="Script" uid="uid://bspod15i3t1i2" path="res://addons/gdbase/inventory/core/model/shape_inventory_occupy_map.gd" id="7_261ed"]
+[ext_resource type="Texture2D" uid="uid://dx1jsprnne058" path="res://addons/gdbase/ui/quick_node/texture_mask/patterns/squares.png" id="7_u1kaa"]
+[ext_resource type="Script" uid="uid://bppensn1vi4a7" path="res://addons/gdbase/inventory/core/model/inventory_data.gd" id="8_h6uki"]
+[ext_resource type="Script" uid="uid://difslqnqtqevy" path="res://addons/gdbase/ui/quick_node/quick_mask.gd" id="8_n81x3"]
+[ext_resource type="Resource" uid="uid://bwfpi306rm5i1" path="res://addons/gdbase/inventory/presets/host/grid_inventory_host.tres" id="9_m0pwt"]
+[ext_resource type="Script" uid="uid://o0w70tug0ugw" path="res://addons/gdbase/inventory/ui/grid/inventory_grid_panel.gd" id="10_6jyxj"]
+[ext_resource type="Script" uid="uid://p51chh0accl7" path="res://addons/gdbase/inventory/ui/grid/grid_inventory_items_panel.gd" id="11_u1kaa"]
+[ext_resource type="Script" uid="uid://chlveqs7anexb" path="res://addons/gdbase/inventory/ui/interaction/input/inventory_items_input_controller.gd" id="12_n81x3"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_6jyxj"]
+shader = ExtResource("6_6jyxj")
+shader_parameter/mask_texture = ExtResource("7_u1kaa")
+shader_parameter/progress = 1.0
+shader_parameter/inverted = false
+shader_parameter/has_mask = true
+shader_parameter/use_content = false
+shader_parameter/tint = Color(1, 1, 1, 1)
+
+[sub_resource type="Gradient" id="Gradient_u1kaa"]
+colors = PackedColorArray(1, 1, 1, 1, 1, 1, 1, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_n81x3"]
+gradient = SubResource("Gradient_u1kaa")
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fk314"]
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 1
+
+[sub_resource type="Resource" id="Resource_oup0y"]
+script = ExtResource("7_261ed")
+cells = Array[Vector2i]([Vector2i(0, 0), Vector2i(1, 0), Vector2i(2, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(2, 1), Vector2i(0, 2), Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 0), Vector2i(3, 1), Vector2i(3, 2), Vector2i(0, 3), Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3), Vector2i(4, 0), Vector2i(4, 1), Vector2i(4, 2), Vector2i(4, 3), Vector2i(5, 0), Vector2i(5, 1), Vector2i(5, 2), Vector2i(5, 3), Vector2i(6, 0), Vector2i(6, 1), Vector2i(6, 3), Vector2i(7, 0), Vector2i(7, 1), Vector2i(8, 1), Vector2i(8, 2), Vector2i(9, 0), Vector2i(9, 1), Vector2i(9, 2), Vector2i(9, 3), Vector2i(8, 3), Vector2i(6, 2), Vector2i(7, 2), Vector2i(8, 0), Vector2i(7, 3)])
+region_cells = Dictionary[Vector2i, Variant]({
+Vector2i(0, 0): true,
+Vector2i(0, 1): true,
+Vector2i(0, 2): true,
+Vector2i(0, 3): true,
+Vector2i(1, 0): true,
+Vector2i(1, 1): true,
+Vector2i(1, 2): true,
+Vector2i(1, 3): true,
+Vector2i(2, 0): true,
+Vector2i(2, 1): true,
+Vector2i(2, 2): true,
+Vector2i(2, 3): true,
+Vector2i(3, 0): true,
+Vector2i(3, 1): true,
+Vector2i(3, 2): true,
+Vector2i(3, 3): true,
+Vector2i(4, 0): true,
+Vector2i(4, 1): true,
+Vector2i(4, 2): true,
+Vector2i(4, 3): true,
+Vector2i(5, 0): true,
+Vector2i(5, 1): true,
+Vector2i(5, 2): true,
+Vector2i(5, 3): true,
+Vector2i(6, 0): true,
+Vector2i(6, 1): true,
+Vector2i(6, 2): true,
+Vector2i(6, 3): true,
+Vector2i(7, 0): true,
+Vector2i(7, 1): true,
+Vector2i(7, 2): true,
+Vector2i(7, 3): true,
+Vector2i(8, 0): true,
+Vector2i(8, 1): true,
+Vector2i(8, 2): true,
+Vector2i(8, 3): true,
+Vector2i(9, 0): true,
+Vector2i(9, 1): true,
+Vector2i(9, 2): true,
+Vector2i(9, 3): true
+})
+
+[sub_resource type="Resource" id="Resource_t6svt"]
+script = ExtResource("8_h6uki")
+occupy_map = SubResource("Resource_oup0y")
+metadata/_custom_type_script = "uid://bppensn1vi4a7"
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6jyxj"]
+bg_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 4
+corner_radius_top_right = 4
+corner_radius_bottom_right = 4
+corner_radius_bottom_left = 4
+corner_detail = 1
+
+[node name="StagedExpaned" type="Control" unique_id=790391719]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Button" type="Button" parent="." unique_id=547098162]
+layout_mode = 0
+offset_right = 138.0
+offset_bottom = 92.0
+
+[node name="QuickUiAnimHost" type="Node" parent="." unique_id=1950274748 node_paths=PackedStringArray("ui", "play_button")]
+script = ExtResource("1_c1bpr")
+ui = NodePath("../Panel")
+play_button = NodePath("../Button")
+metadata/_custom_type_script = "uid://cowa42jh5mafo"
+
+[node name="QuickZoom" type="Node" parent="QuickUiAnimHost" unique_id=1071511683 node_paths=PackedStringArray("ui")]
+script = ExtResource("2_fk314")
+ui = NodePath("../../Panel")
+target_scale = Vector2(0, 0)
+animation_duration = 0.0
+
+[node name="QuickShow" type="Node" parent="QuickUiAnimHost" unique_id=435427489 node_paths=PackedStringArray("control")]
+script = ExtResource("3_mswor")
+control = NodePath("../../Panel/NinePatchRect/VBoxContainer")
+target_state = 1
+animation_duration = 0.0
+animation_transition = 10
+
+[node name="QuickShow2" type="Node" parent="QuickUiAnimHost" unique_id=434043267 node_paths=PackedStringArray("control")]
+script = ExtResource("3_mswor")
+control = NodePath("../../Panel/Panel")
+animation_duration = 0.0
+animation_transition = 10
+
+[node name="QuickPopIn" type="Node" parent="QuickUiAnimHost" unique_id=51993030 node_paths=PackedStringArray("ui")]
+script = ExtResource("3_44k1i")
+ui = NodePath("../../Panel")
+origin_ratio = Vector2(0.5, 1)
+animation_duration = 0.25
+animation_transition = 10
+
+[node name="QuickZoom2" type="Node" parent="QuickUiAnimHost" unique_id=193074962 node_paths=PackedStringArray("ui")]
+script = ExtResource("2_fk314")
+ui = NodePath("../../Panel")
+origin_ratio = Vector2(0.5, 1)
+target_scale = Vector2(0.2, 0.2)
+animation_duration = 0.51
+
+[node name="QuickZoom_2" type="Node" parent="QuickUiAnimHost" unique_id=1889826964 node_paths=PackedStringArray("ui")]
+script = ExtResource("2_fk314")
+ui = NodePath("../../Panel")
+origin_ratio = Vector2(0.5, 1)
+target_scale = Vector2(1, 0.2)
+
+[node name="QuickParallel" type="Node" parent="QuickUiAnimHost" unique_id=2072473150]
+script = ExtResource("4_idg80")
+
+[node name="QuickShow3" type="Node" parent="QuickUiAnimHost/QuickParallel" unique_id=1402303678 node_paths=PackedStringArray("control")]
+script = ExtResource("3_mswor")
+control = NodePath("../QuickMask")
+animation_duration = 0.0
+animation_transition = 10
+
+[node name="QuickShow4" type="Node" parent="QuickUiAnimHost/QuickParallel" unique_id=248402616 node_paths=PackedStringArray("control")]
+script = ExtResource("3_mswor")
+control = NodePath("../../../Panel/Panel")
+target_state = 1
+animation_duration = 0.0
+animation_transition = 10
+
+[node name="QuickMask" type="TextureRect" parent="QuickUiAnimHost/QuickParallel" unique_id=1334735822 node_paths=PackedStringArray("ui")]
+visible = false
+material = SubResource("ShaderMaterial_6jyxj")
+offset_left = 139.5
+offset_top = 216.6
+offset_right = 702.5
+offset_bottom = 271.0
+mouse_filter = 2
+texture = SubResource("GradientTexture2D_n81x3")
+expand_mode = 1
+script = ExtResource("8_n81x3")
+ui = NodePath("../../../Panel")
+mask_texture = ExtResource("7_u1kaa")
+tint = Color(1, 1, 1, 1)
+progress = 1.0
+target_progress = 0.0
+animation_duration = 0.55
+animation_transition = 11
+
+[node name="QuickPopIn2" type="Node" parent="QuickUiAnimHost/QuickParallel" unique_id=1117342207 node_paths=PackedStringArray("ui")]
+script = ExtResource("3_44k1i")
+ui = NodePath("../../../Panel")
+animation_duration = 0.25
+animation_transition = 10
+
+[node name="QuickZoom_3" type="Node" parent="QuickUiAnimHost/QuickParallel" unique_id=9960435 node_paths=PackedStringArray("ui")]
+script = ExtResource("2_fk314")
+ui = NodePath("../../../Panel")
+origin_ratio = Vector2(0.5, 1)
+animation_duration = 0.65
+animation_transition = 11
+animation_ease = 2
+
+[node name="QuickShow2" type="Node" parent="QuickUiAnimHost/QuickParallel" unique_id=702971627 node_paths=PackedStringArray("control")]
+script = ExtResource("3_mswor")
+control = NodePath("../../../Panel/NinePatchRect/VBoxContainer")
+animation_transition = 10
+
+[node name="QuickShow3" type="Node" parent="QuickUiAnimHost" unique_id=2087740380 node_paths=PackedStringArray("control")]
+script = ExtResource("3_mswor")
+control = NodePath("../QuickParallel/QuickMask")
+target_state = 1
+animation_duration = 0.0
+animation_transition = 10
+
+[node name="Panel" type="Panel" parent="." unique_id=1697881642]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -281.5
+offset_top = -136.0
+offset_right = 281.5
+offset_bottom = 136.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_fk314")
+
+[node name="NinePatchRect" type="NinePatchRect" parent="Panel" unique_id=2107175627]
+self_modulate = Color(0, 0, 0, 1)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+texture = ExtResource("6_261ed")
+patch_margin_left = 16
+patch_margin_top = 16
+patch_margin_right = 16
+patch_margin_bottom = 16
+
+[node name="VBoxContainer" type="VBoxContainer" parent="Panel/NinePatchRect" unique_id=887973100]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -260.0
+offset_top = -143.0
+offset_right = 260.0
+offset_bottom = 143.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+
+[node name="Label" type="Label" parent="Panel/NinePatchRect/VBoxContainer" unique_id=20467828]
+layout_mode = 2
+text = "一个包"
+horizontal_alignment = 1
+
+[node name="InventoryHost" type="Control" parent="Panel/NinePatchRect/VBoxContainer" unique_id=1092985201]
+custom_minimum_size = Vector2(520, 208)
+layout_mode = 2
+script = ExtResource("5_c37va")
+inventory_data = SubResource("Resource_t6svt")
+definition = ExtResource("9_m0pwt")
+metadata/_custom_type_script = "uid://s5whn1tbjmil"
+
+[node name="InventoryGridPanel" type="GridContainer" parent="Panel/NinePatchRect/VBoxContainer/InventoryHost" unique_id=791206611]
+layout_mode = 0
+mouse_filter = 0
+columns = 10
+script = ExtResource("10_6jyxj")
+cell_size = Vector2(48, 48)
+inventory_data = SubResource("Resource_t6svt")
+
+[node name="GridInventoryItemsPanel" type="Control" parent="Panel/NinePatchRect/VBoxContainer/InventoryHost" unique_id=230020948 node_paths=PackedStringArray("inventory_grid_panel")]
+custom_minimum_size = Vector2(520, 208)
+anchors_preset = 0
+offset_right = 520.0
+offset_bottom = 208.0
+mouse_filter = 2
+script = ExtResource("11_u1kaa")
+inventory_grid_panel = NodePath("../InventoryGridPanel")
+inventory_data = SubResource("Resource_t6svt")
+
+[node name="InventoryItemsInputController" type="Node" parent="Panel/NinePatchRect/VBoxContainer/InventoryHost" unique_id=984445201 node_paths=PackedStringArray("inventory_grid_panel")]
+script = ExtResource("12_n81x3")
+inventory_data = SubResource("Resource_t6svt")
+inventory_grid_panel = NodePath("../InventoryGridPanel")
+input_processing_enabled = false
+
+[node name="Panel" type="Panel" parent="Panel" unique_id=462231567]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6jyxj")

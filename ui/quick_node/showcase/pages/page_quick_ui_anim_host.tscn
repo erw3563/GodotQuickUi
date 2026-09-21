@@ -1,11 +1,11 @@
-[gd_scene format=3 uid="uid://bquickhostpg1"]
+[gd_scene format=3 uid="uid://lqd0iglht78q"]
 
-[ext_resource type="Script" uid="uid://buv3144avwqyq" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_host.gd" id="1_page"]
-[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_host.gd" id="2_host"]
+[ext_resource type="Script" uid="uid://buv3144avwqyq" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_ui_anim_host.gd" id="1_page"]
+[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_ui_anim_host.gd" id="2_host"]
 [ext_resource type="Script" uid="uid://l5j44igh7cty" path="res://addons/gdbase/ui/quick_node/quick_show.gd" id="6_show"]
 [ext_resource type="Script" uid="uid://bw00dnrh07iwt" path="res://addons/gdbase/ui/quick_node/quick_mouse_place.gd" id="6_xs6ou"]
 [ext_resource type="Script" uid="uid://b1g5y8nnfmlvb" path="res://addons/gdbase/ui/quick_node/quick_zoom.gd" id="7_zoom"]
-[ext_resource type="Script" uid="uid://nl8l4sfn1snp" path="res://addons/gdbase/ui/quick_node/quick_rotate.gd" id="8_rotate"]
+[ext_resource type="Script" uid="uid://nl8l4sfn1snp" path="res://addons/gdbase/ui/quick_node/quick_wobble.gd" id="8_wobble"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_baked"]
 content_margin_left = 14.0
@@ -18,7 +18,7 @@ corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
 
-[node name="PageQuickHost" type="Control" unique_id=1271748286]
+[node name="PageQuickUiAnimHost" type="Control" unique_id=1271748286]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -45,6 +45,7 @@ text = "离场动画"
 
 [node name="BakedCard" type="Panel" parent="." unique_id=397566605]
 unique_name_in_owner = true
+visible = false
 custom_minimum_size = Vector2(340, 220)
 layout_mode = 1
 anchors_preset = 8
@@ -60,32 +61,49 @@ grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(170, 110)
 theme_override_styles/panel = SubResource("StyleBoxFlat_baked")
+scale = Vector2(0, 0)
 
-[node name="BakedHost" type="Node" parent="BakedCard" unique_id=1355169677 node_paths=PackedStringArray("ui")]
+[node name="EnterHost" type="Node" parent="BakedCard" unique_id=1355169677 node_paths=PackedStringArray("ui", "play_button")]
 unique_name_in_owner = true
 script = ExtResource("2_host")
 ui = NodePath("..")
-create_show = true
-create_place = true
-create_zoom = true
-create_rotate = true
+animate_entrance = false
+play_button = NodePath("../../Button")
 
-[node name="QuickShow" type="Node" parent="BakedCard/BakedHost" unique_id=752221393 node_paths=PackedStringArray("control")]
+[node name="QuickShow" type="Node" parent="BakedCard/EnterHost" unique_id=752221393 node_paths=PackedStringArray("control")]
 script = ExtResource("6_show")
 control = NodePath("../..")
+animation_duration = 0.0
 
-[node name="QuickZoom" type="Node" parent="BakedCard/BakedHost" unique_id=1818370280 node_paths=PackedStringArray("ui")]
+[node name="QuickZoom" type="Node" parent="BakedCard/EnterHost" unique_id=1818370280 node_paths=PackedStringArray("ui")]
 script = ExtResource("7_zoom")
 ui = NodePath("../..")
 
-[node name="QuickRotate" type="Node" parent="BakedCard/BakedHost" unique_id=394344495 node_paths=PackedStringArray("ui")]
-script = ExtResource("8_rotate")
+[node name="QuickWobble" type="Node" parent="BakedCard/EnterHost" unique_id=394344495 node_paths=PackedStringArray("ui")]
+script = ExtResource("8_wobble")
 ui = NodePath("../..")
 
-[node name="QuickMousePlace" type="Node" parent="BakedCard/BakedHost" unique_id=959374448 node_paths=PackedStringArray("control", "show")]
+[node name="QuickMousePlace" type="Node" parent="BakedCard/EnterHost" unique_id=959374448 node_paths=PackedStringArray("control")]
 script = ExtResource("6_xs6ou")
 control = NodePath("../..")
-show = NodePath("../QuickShow")
+
+[node name="ExitHost" type="Node" parent="BakedCard" node_paths=PackedStringArray("ui", "play_button")]
+unique_name_in_owner = true
+script = ExtResource("2_host")
+ui = NodePath("..")
+animate_entrance = false
+play_button = NodePath("../../Button2")
+
+[node name="QuickZoom" type="Node" parent="BakedCard/ExitHost" node_paths=PackedStringArray("ui")]
+script = ExtResource("7_zoom")
+ui = NodePath("../..")
+target_scale = Vector2(0, 0)
+
+[node name="QuickShow" type="Node" parent="BakedCard/ExitHost" node_paths=PackedStringArray("control")]
+script = ExtResource("6_show")
+control = NodePath("../..")
+target_state = 1
+animation_duration = 0.0
 
 [node name="Hint" type="Label" parent="." unique_id=319422435]
 custom_minimum_size = Vector2(450, 0)
@@ -93,12 +111,9 @@ layout_mode = 1
 offset_right = 427.0
 offset_bottom = 112.0
 theme_override_font_sizes/font_size = 14
-text = "QuickHost
-1. 您可在编辑器的检查器中配置QuickHost
+text = "QuickUiAnimHost
+1. 您可在编辑器的检查器中配置QuickUiAnimHost
 2. 您可调整的内容主要是生成的QuickUI节点
 3. 您可使用不同的QuickUi实现UI面板的不同功能
 3. 您可使用多个的QuickUi进行组合实现更加强大的功能"
 autowrap_mode = 3
-
-[connection signal="pressed" from="Button" to="BakedCard/BakedHost" method="play_entrance"]
-[connection signal="pressed" from="Button2" to="BakedCard/BakedHost" method="play_exit"]

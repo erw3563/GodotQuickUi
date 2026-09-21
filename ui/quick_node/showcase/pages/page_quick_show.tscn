@@ -1,8 +1,9 @@
 [gd_scene format=3 uid="uid://da2pcvd0lbt4g"]
 
 [ext_resource type="Script" uid="uid://boses33uis22n" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_show.gd" id="1_ijty7"]
-[ext_resource type="Script" uid="uid://l5j44igh7cty" path="res://addons/gdbase/ui/quick_node/quick_show.gd" id="2_i55r5"]
-[ext_resource type="Script" uid="uid://bw00dnrh07iwt" path="res://addons/gdbase/ui/quick_node/quick_mouse_place.gd" id="3_place"]
+[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_ui_anim_host.gd" id="2_host"]
+[ext_resource type="Script" uid="uid://l5j44igh7cty" path="res://addons/gdbase/ui/quick_node/quick_show.gd" id="3_i55r5"]
+[ext_resource type="Script" uid="uid://bw00dnrh07iwt" path="res://addons/gdbase/ui/quick_node/quick_mouse_place.gd" id="4_place"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gq3th"]
 content_margin_left = 14.0
@@ -20,6 +21,8 @@ layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_ijty7")
 
 [node name="OpenButton" type="Button" parent="." unique_id=874912149]
@@ -60,7 +63,7 @@ offset_bottom = 56.0
 focus_mode = 0
 text = "粘贴"
 
-[node name="ItemDelete" type="Button" parent="Menu" unique_id=1055147534]
+[node name="ItemDelete" type="Button" parent="Menu" unique_id=1057542345]
 layout_mode = 0
 offset_left = 16.0
 offset_top = 98.0
@@ -79,18 +82,32 @@ offset_top = -64.0
 offset_right = -24.0
 offset_bottom = -24.0
 theme_override_font_sizes/font_size = 14
-text = "点「打开菜单」在鼠标位置弹出小菜单（自动避免超出屏幕、可强制顶点对齐鼠标）；按 Q 收起。"
+text = "点「打开菜单」在鼠标位置弹出小菜单（自动避免超出屏幕）；按 Q 收起。"
 autowrap_mode = 3
 
-[node name="Shower" type="Node" parent="." unique_id=1199755064 node_paths=PackedStringArray("control")]
-control = NodePath("../Menu")
+[node name="EnterHost" type="Node" parent="." unique_id=1199755064 node_paths=PackedStringArray("ui")]
 unique_name_in_owner = true
-script = ExtResource("2_i55r5")
-is_hide_in_ready = false
-hide_action = "demo_quick_show_hide"
+script = ExtResource("2_host")
+ui = NodePath("../Menu")
+animate_entrance = false
 
-[node name="Placer" type="Node" parent="." node_paths=PackedStringArray("control", "show")]
-control = NodePath("../Menu")
-show = NodePath("../Shower")
+[node name="QuickMousePlace" type="Node" parent="EnterHost" unique_id=675232841 node_paths=PackedStringArray("control")]
+script = ExtResource("4_place")
+control = NodePath("../../Menu")
+
+[node name="QuickShow" type="Node" parent="EnterHost" unique_id=1199755065 node_paths=PackedStringArray("control")]
+script = ExtResource("3_i55r5")
+control = NodePath("../../Menu")
+
+[node name="ExitHost" type="Node" parent="." unique_id=1199755066 node_paths=PackedStringArray("ui")]
 unique_name_in_owner = true
-script = ExtResource("3_place")
+script = ExtResource("2_host")
+ui = NodePath("../Menu")
+animate_entrance = false
+
+[node name="QuickShow" type="Node" parent="ExitHost" unique_id=1199755067 node_paths=PackedStringArray("control")]
+script = ExtResource("3_i55r5")
+control = NodePath("../../Menu")
+target_state = 1
+
+[connection signal="pressed" from="OpenButton" to="EnterHost" method="play"]

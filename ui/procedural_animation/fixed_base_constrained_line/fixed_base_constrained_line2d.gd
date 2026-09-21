@@ -45,7 +45,7 @@ func apply_constraints():
 	for i in 4:
 		_apply_length_constraints()
 		_apply_angle_constraints()
-	
+
 
 func _apply_length_constraints():
 	if target:
@@ -55,7 +55,7 @@ func _apply_length_constraints():
 	_apply_length_constraints_from_zero()
 	line_points[-1] = global_position
 	_apply_length_constraints_from_max()
-	
+
 
 func _apply_length_constraints_from_max():
 	for i in range(line_points.size()-2,-1,-1):
@@ -85,7 +85,7 @@ func _apply_angle_constraints():
 			continue
 		var dir_to_prev = vec_to_prev.normalized()
 		var dir_to_next = vec_to_next.normalized()
-		
+
 		var current_bend_angle_rad = dir_to_prev.angle_to(dir_to_next)
 		var current_bend_angle_deg = rad_to_deg(current_bend_angle_rad)
 		if current_bend_angle_deg >0:

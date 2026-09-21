@@ -14,7 +14,7 @@ enum DragMode {
 @export var dragged_ui: Control
 ## 能够被鼠标点击以开始拖动的 Control 节点
 @export var clickable_ui:Control
-## 位置落笔中介（鸭子契约：实现 place(control, proposed, intent) 的节点，QuickHost 即是）；
+## 位置落笔中介（鸭子契约：实现 place(control, proposed, intent) 的节点，QuickUiAnimHost 即是）；
 ## 拖拽落笔以 INTERACTIVE 意图经其裁决加工，可打断演出租约。留空则直写（散装）。
 @export var placer: Node
 ## 拖拽模式：自由、仅水平轴线段、仅竖直轴线段。

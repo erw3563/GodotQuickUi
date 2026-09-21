@@ -1,52 +1,72 @@
 extends ShowcasePage
-## 演示页·弹入弹出 QuickPopOut：目标卡从屏幕外沿所选方向飞入到休息位、
-## 反向飞出并淡出。组件经场景 NodePath 绑定 ui（".."，节点路径先于 _ready
-## 解析，不会误驱动父页面）；休息位在布局稳定后（等两帧）只重采一次——
-## 卡片此后不被外力移动，运行中反复弹出/收回不会漂移。
+## 演示页·弹入弹出 QuickPopIn / QuickPopOut：卡片经入场宿主从屏下飞到屏幕中心，
+## 经离场宿主从当前位置飞出到所选屏外端点。位置件声明比例目标——控件上的贴合点
+## origin_ratio 对齐 视口尺寸 × target_ratio；「贴合点」下拉切换两端 origin_ratio，
+## 卡片随新贴合点重新贴到当前目标点。起点与可见性由本页摆放。组件经场景 NodePath
+## 绑定 ui，节点路径先于 _ready 解析。
 
-const DIRECTION_TEXTS: Array[String] = ["从底部进入", "从顶部进入", "从左侧进入", "从右侧进入"]
-const DIRECTIONS: Array[QuickPopOut.EnterDirection] = [
-	QuickPopOut.EnterDirection.FROM_BOTTOM,
-	QuickPopOut.EnterDirection.FROM_TOP,
-	QuickPopOut.EnterDirection.FROM_LEFT,
-	QuickPopOut.EnterDirection.FROM_RIGHT,
+const EXIT_TEXTS: Array[String] = ["向屏上离开", "向屏下离开", "向屏左离开", "向屏右离开"]
+const EXIT_RATIOS: Array[Vector2] = [
+	Vector2(0.5, -0.5),
+	Vector2(0.5, 1.5),
+	Vector2(-0.5, 0.5),
+	Vector2(1.5, 0.5),
 ]
-
-var _rest_global: Vector2
+## 入场目标：屏幕中心。
+const ENTER_TARGET := Vector2(0.5, 0.5)
+## 入场起点：入场目标沿 y 轴退一屏，卡片由屏下飞入。
+const ENTER_START := ENTER_TARGET + Vector2(0.0, 1.0)
+const ORIGIN_TEXTS: Array[String] = ["中心贴合", "左上贴合", "右下贴合"]
+const ORIGIN_RATIOS: Array[Vector2] = [Vector2(0.5, 0.5), Vector2.ZERO, Vector2.ONE]
 
 
 func _ready() -> void:
 	var option := %DirectionOption as OptionButton
-	for item_index in DIRECTION_TEXTS.size():
-		option.add_item(DIRECTION_TEXTS[item_index])
-	option.select(0)
-	option.item_selected.connect(_on_direction_option_selected)
-	%ButtonPopOut.pressed.connect((%Popper as QuickPopOut).pop_out)
-	%ButtonPopIn.pressed.connect((%Popper as QuickPopOut).pop_in)
-	_recapture_rest.call_deferred()
+	for item_index in EXIT_TEXTS.size():
+		option.add_item(EXIT_TEXTS[item_index])
+	option.item_selected.connect(_on_exit_target_selected)
+	var origin_option := %OriginOption as OptionButton
+	for item_index in ORIGIN_TEXTS.size():
+		origin_option.add_item(ORIGIN_TEXTS[item_index])
+	origin_option.item_selected.connect(_on_origin_selected)
+	%ButtonPopOut.pressed.connect((%ExitHost as QuickUiAnimHost).play)
+	%ButtonPopIn.pressed.connect(_play_enter)
+	reset_page()
 
 
-## 等两帧布局稳定后重采休息位（与组件自身的延迟入场时序一致）。
-func _recapture_rest() -> void:
-	await get_tree().process_frame
-	await get_tree().process_frame
-	if not is_inside_tree() or not is_instance_valid(%Popper):
-		return
-	(%Popper as QuickPopOut).capture_rest_position()
-	_rest_global = (%TargetCard as Control).global_position
+func _on_exit_target_selected(item_index: int) -> void:
+	(%PopperOut as QuickPopOut).target_ratio = EXIT_RATIOS[item_index]
 
 
-func _on_direction_option_selected(item_index: int) -> void:
-	(%Popper as QuickPopOut).enter_direction = DIRECTIONS[item_index]
+## 换贴合点：入口与出口件同步改 origin_ratio，卡片立即按新贴合点贴回入场目标位。
+func _on_origin_selected(item_index: int) -> void:
+	var origin := ORIGIN_RATIOS[item_index]
+	(%PopperIn as QuickPopIn).origin_ratio = origin
+	(%PopperOut as QuickPopOut).origin_ratio = origin
+	_place_card(ENTER_TARGET)
 
 
-## 方向回「从底部进入」，卡片直接落回隐藏于休息位的初始状态。
+## 弹出：把卡片摆到屏下起点再经入场宿主播放到屏幕中心。
+func _play_enter() -> void:
+	_place_card(ENTER_START)
+	(%TargetCard as Control).visible = true
+	(%EnterHost as QuickUiAnimHost).play()
+
+
+## 回缺省：贴合点回中心、离场端点回屏下、卡片落回屏幕中心并隐藏，等待下一次弹出。
 func reset_page() -> void:
-	(%DirectionOption as OptionButton).select(0)
-	var popper := %Popper as QuickPopOut
-	popper.enter_direction = QuickPopOut.EnterDirection.FROM_BOTTOM
+	(%OriginOption as OptionButton).select(0)
+	(%DirectionOption as OptionButton).select(1)
+	_on_origin_selected(0)
+	(%PopperOut as QuickPopOut).target_ratio = EXIT_RATIOS[1]
+	_place_card(ENTER_TARGET)
+	(%TargetCard as Control).visible = false
+
+
+## 把卡片摆到比例点：控件上的贴合点对齐 视口尺寸 × ratio。
+func _place_card(ratio: Vector2) -> void:
 	var card := %TargetCard as Control
-	card.global_position = _rest_global
-	card.modulate.a = 1.0
-	card.visible = false
-	popper.is_out = false
+	var origin := (%PopperIn as QuickPopIn).origin_ratio
+	card.position = QuickUI.global_to_layout(
+		card, get_viewport_rect().size * ratio - card.size * origin
+	)

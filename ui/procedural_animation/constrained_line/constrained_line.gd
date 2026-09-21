@@ -63,7 +63,7 @@ func _apply_angle_constraints():
 			continue
 		var dir_to_prev = vec_to_prev.normalized()
 		var dir_to_next = vec_to_next.normalized()
-		
+
 		var current_bend_angle_rad = dir_to_prev.angle_to(dir_to_next)
 		var current_bend_angle_deg = rad_to_deg(current_bend_angle_rad)
 		if current_bend_angle_deg >0:
