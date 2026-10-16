@@ -47,8 +47,6 @@ Shader 只挂在独立画布内的路径网格上；最终输出仍为普通混�
 - 入口：`play_wave()` / `stop_wave()`（停止时缩放归 1）/ `is_wave_playing()`；重建后自动恢复缩放，自动播放开启时重启 Tween。
 - 脚本：`addons/gdbase/ui/procedural_animation/radial_rays_outward_wave.gd`。
 
-自动化：`res://test/automated/procedural_animation/test_radial_rays.tscn` 覆盖构建器几何（基础宽度/斜率/等宽与点起点口径）/随机值域/种子确定性/内半径随机与角度区域偏移语义与节点级重建、落盘纪律（owner==null）、配置警告、向外波动。手动调参沙盒：`res://test/manual/gdbase/procedural_animation/radial_rays_preview.tscn`（宽深蓝 + 细亮蓝双盘叠放，细盘带内半径随机示例）。
-
 # 路径横向条带图案播撒（PathPatternScatter2D）
 
 `PathPatternScatter2D`（`@tool` Node2D）消费 `PathDefinition`，在每条有效 `Curve2D` 的法线方向 ±`half_width` 走廊内按固定种子播撒预设 `Texture2D`，并用 `GPUParticles2D`（`POINTS` / `DIRECTED_POINTS`）做淡出与沿切线漂移。几何在 `PathPatternScatterBuilder`（纯静态）；节点持有参数、监听路径变更并管理生成的粒子子节点。
@@ -60,8 +58,6 @@ Shader 只挂在独立画布内的路径网格上；最终输出仍为普通混�
 - 契约：名下直接子节点均为生成产物，不设 owner，不进 `.tscn`；不得挂业务节点。路径/种子/半宽变化重建发射纹理并 `restart()`。
 - 配置警告：无 definition、无有效曲线、无图案、权重和为 0。
 
-手动沙盒：`res://test/manual/gdbase/procedural_animation/path_pattern_scatter_preview.tscn`。
-
 # 路径横向条带图案静态贴图（PathPatternStamp2D）
 
 `PathPatternStamp2D`（`@tool` Node2D）与 Scatter 共用走廊烘焙语义：消费 `PathDefinition`，在每条有效 `Curve2D` 的法线 ±`half_width` 走廊内按固定种子播撒预设 `Texture2D`。每个烘焙点生成一张 `Sprite2D`（按权重抽图案，并随机缩放与朝向）；不含粒子寿命、发射或漂移。
@@ -72,5 +68,3 @@ Shader 只挂在独立画布内的路径网格上；最终输出仍为普通混�
 - 几何复用 `PathPatternScatterBuilder.bake_emission`；实例外观由 `bake_stamp_instances` / `pick_weighted_pattern_indices` 计算。
 - 契约：名下直接子节点均为生成的 `Sprite2D`，不设 owner，不进 `.tscn`；不得挂业务节点。
 - 配置警告：无 definition、无有效曲线、无图案、权重和为 0。
-
-手动沙盒：`res://test/manual/gdbase/procedural_animation/path_pattern_stamp_preview.tscn`。
