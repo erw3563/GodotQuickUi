@@ -3,6 +3,7 @@ class_name DrawShapeControl
 extends Control
 ## 形状绘制控件：在检查器里选择形状并配置参数，节点在 _draw 内绘制填充与描边。
 ## 轮廓顶点来自 ShapeOutline；参数夹取、画布命令与最小尺寸归本节点。
+## 独特参数（圆角、边数、星形角数与内径比）按当前形状在检查器中显示。
 ## 局部坐标命中经 contains_point 提供：precise_hit_test 开启时鼠标命中按形状轮廓
 ## 判定，关闭时沿用 Control 的矩形命中；鼠标事件本身仍由 mouse_filter 过滤。
 ## 编辑器内即时预览；节点持有形状参数与绘制职责，配合检查器完成配置与预览。
@@ -14,6 +15,7 @@ extends Control
 		if shape == value:
 			return
 		shape = value
+		notify_property_list_changed()
 		queue_redraw()
 ## 方形圆角半径，夹取到短边的一半（形状为方形时生效）。
 @export var corner_radius: float = 0.0:
@@ -89,6 +91,20 @@ extends Control
 
 func _init() -> void:
 	resized.connect(queue_redraw)
+
+
+## 按当前形状隐藏无关导出：值仍参与序列化，检查器只显示当前形状所需参数。
+func _validate_property(property: Dictionary) -> void:
+	match property.name:
+		"corner_radius":
+			if shape != ShapeOutline.Kind.RECT:
+				property.usage = PROPERTY_USAGE_NO_EDITOR
+		"polygon_sides":
+			if shape != ShapeOutline.Kind.POLYGON:
+				property.usage = PROPERTY_USAGE_NO_EDITOR
+		"star_points", "star_inner_ratio":
+			if shape != ShapeOutline.Kind.STAR:
+				property.usage = PROPERTY_USAGE_NO_EDITOR
 
 
 func _get_minimum_size() -> Vector2:

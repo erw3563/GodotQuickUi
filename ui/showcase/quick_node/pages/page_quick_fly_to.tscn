@@ -1,0 +1,92 @@
+[gd_scene format=3 uid="uid://ye2ha3f0hom6"]
+
+[ext_resource type="Script" uid="uid://c1lo2wnb84lqr" path="res://addons/gdbase/ui/showcase/quick_node/pages/page_quick_fly_to.gd" id="1_n2y0x"]
+[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_ui_anim_host.gd" id="2_wpy6x"]
+[ext_resource type="Script" uid="uid://bx4fsnyb20wg0" path="res://addons/gdbase/ui/quick_node/quick_fly_to.gd" id="3_bldb0"]
+[ext_resource type="Script" uid="uid://cf6q2q0hdqetj" path="res://addons/gdbase/ui/quick_node/quick_reparent.gd" id="4_wr414"]
+
+[node name="PageQuickFlyTo" type="Control" unique_id=521793538]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1_n2y0x")
+
+[node name="SourceCard" type="Panel" parent="." unique_id=241046545]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(160, 90)
+layout_mode = 0
+offset_left = 80.0
+offset_top = 120.0
+offset_right = 240.0
+offset_bottom = 210.0
+
+[node name="Caption" type="Label" parent="SourceCard" unique_id=1043947603]
+layout_mode = 0
+theme_override_font_sizes/font_size = 15
+text = "源卡片"
+
+[node name="DestinationCard" type="Panel" parent="." unique_id=1232090448]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(220, 140)
+layout_mode = 0
+offset_left = 520.0
+offset_top = 180.0
+offset_right = 740.0
+offset_bottom = 320.0
+
+[node name="Caption" type="Label" parent="DestinationCard" unique_id=1402223624]
+layout_mode = 0
+theme_override_font_sizes/font_size = 15
+text = "目的地"
+
+[node name="Toolbar" type="HBoxContainer" parent="." unique_id=256757451]
+layout_mode = 0
+offset_left = 80.0
+offset_top = 360.0
+offset_right = 80.0
+offset_bottom = 360.0
+theme_override_constants/separation = 8
+
+[node name="ButtonFly" type="Button" parent="Toolbar" unique_id=1857926487]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "飞入并挂入"
+
+[node name="ButtonReset" type="Button" parent="Toolbar" unique_id=1484496975]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "复位"
+
+[node name="Hint" type="Label" parent="." unique_id=75966450]
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -84.0
+offset_right = 24.0
+offset_bottom = 24.0
+theme_override_font_sizes/font_size = 14
+text = "点「飞入并挂入」：源卡片飞到目的地中心后成为其子节点；「复位」归还父子关系并摆回起点。"
+autowrap_mode = 3
+
+[node name="AnimHost" type="Node" parent="." unique_id=927284119 node_paths=PackedStringArray("ui")]
+unique_name_in_owner = true
+script = ExtResource("2_wpy6x")
+ui = NodePath("../SourceCard")
+animate_entrance = false
+
+[node name="Flyer" type="Node" parent="AnimHost" unique_id=1505633279 node_paths=PackedStringArray("ui", "target")]
+unique_name_in_owner = true
+script = ExtResource("3_bldb0")
+ui = NodePath("../../SourceCard")
+target = NodePath("../../DestinationCard")
+
+[node name="Reparenter" type="Node" parent="AnimHost" unique_id=1935305127 node_paths=PackedStringArray("ui", "target")]
+unique_name_in_owner = true
+script = ExtResource("4_wr414")
+ui = NodePath("../../SourceCard")
+target = NodePath("../../DestinationCard")

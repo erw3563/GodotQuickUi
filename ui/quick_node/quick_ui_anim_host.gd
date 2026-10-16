@@ -24,7 +24,7 @@ extends Node
 ## QuickTweenFloat 处理目标脚本导出 float 属性的 Tween。
 ## get_pop_in / get_pop_out /
 ## get_zoom / get_wobble / get_rotate / get_show / get_place / get_fly_to / get_reparent / get_tween_float
-## 取树序第一个（多实例警告），全量访问走 [method get_performances]。
+## 取树序第一个，全量访问走 [method get_performances]。
 ##
 ## 步骤契约：统一播放契约（play 方法＋play_finished 信号，QuickDelay / QuickShow /
 ## QuickMousePlace / QuickZoom / QuickWobble / QuickRotate / QuickMask / QuickPopIn / QuickPopOut /
@@ -83,6 +83,7 @@ enum PerformanceKind {
 	TWEEN_FLOAT,  ## QuickTweenFloat：目标脚本导出 float 属性的 Tween（写脚本自有属性面）
 	PARALLEL,     ## QuickParallel：同播组（组内演出子节点同帧齐播）
 	DELAY,        ## QuickDelay：延时步骤（间隔表达）
+	POINTER_PULL, ## QuickPointerPull：一次性朝鼠标牵引并弹性归位
 }
 
 @export_group("演出件")
@@ -90,6 +91,7 @@ enum PerformanceKind {
 ## 排序即编排）。运行时等价工厂为 [method add_performance]。
 @export_tool_button("同播组") var add_parallel_action = _add_parallel_performance
 @export_tool_button("延时步骤") var add_delay_action = _add_delay_performance
+@export_tool_button("PointerPull 鼠标牵引") var add_pointer_pull_action = _add_pointer_pull_performance
 @export_tool_button("Zoom 缩放") var add_zoom_action = _add_zoom_performance
 @export_tool_button("Show 显隐") var add_show_action = _add_show_performance
 @export_tool_button("Wobble 晃动") var add_wobble_action = _add_wobble_performance
@@ -149,6 +151,7 @@ var _active_step_nodes: Array[Node] = []
 ## 且留有 push_warning 痕迹。
 const _STEP_TIMEOUT_MARGIN := 1.0
 
+var pointer_pull: QuickPointerPull
 var show: QuickShow
 var mouse_place: QuickMousePlace
 var pop_in: QuickPopIn
@@ -264,6 +267,11 @@ func add_performance(kind: PerformanceKind) -> Node:
 			node = QuickTweenFloat.new()
 			node.ui = target
 			_assign_performance_params(node)
+		PerformanceKind.POINTER_PULL:
+			if target == null:
+				return null
+			node = QuickPointerPull.new()
+			node.ui = target
 		PerformanceKind.PARALLEL:
 			node = QuickParallel.new()
 		PerformanceKind.DELAY:
@@ -281,74 +289,68 @@ func add_performance(kind: PerformanceKind) -> Node:
 
 # ---------- 访问器 ----------
 
-## 获取显隐演出件：树序第一个（兼容单实例习惯用法）；多实例时警告，
-## 全量访问走 [method get_performances]。
+func get_pointer_pull() -> QuickPointerPull:
+	pointer_pull = _first_performance_of(QuickPointerPull) as QuickPointerPull
+	return pointer_pull
+
+
+## 获取显隐演出件：树序第一个；全量访问走 [method get_performances]。
 func get_show() -> QuickShow:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickShow, "get_show")
 	return show
 
 
-## 获取鼠标处定位演出件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取鼠标处定位演出件：树序第一个；全量访问走 [method get_performances]。
 func get_place() -> QuickMousePlace:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickMousePlace, "get_place")
 	return mouse_place
 
 
-## 获取入场位置演出件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取入场位置演出件：树序第一个；全量访问走 [method get_performances]。
 func get_pop_in() -> QuickPopIn:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickPopIn, "get_pop_in")
 	return pop_in
 
 
-## 获取离场位置演出件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取离场位置演出件：树序第一个；全量访问走 [method get_performances]。
 func get_pop_out() -> QuickPopOut:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickPopOut, "get_pop_out")
 	return pop_out
 
 
-## 获取缩放组件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取缩放组件：树序第一个；全量访问走 [method get_performances]。
 func get_zoom() -> QuickZoom:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickZoom, "get_zoom")
 	return zoom
 
 
-## 获取晃动组件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取晃动组件：树序第一个；全量访问走 [method get_performances]。
 func get_wobble() -> QuickWobble:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickWobble, "get_wobble")
 	return wobble
 
 
-## 获取旋转组件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取旋转组件：树序第一个；全量访问走 [method get_performances]。
 func get_rotate() -> QuickRotate:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickRotate, "get_rotate")
 	return rotate
 
 
-## 获取飞向控件件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取飞向控件件：树序第一个；全量访问走 [method get_performances]。
 func get_fly_to() -> QuickFlyTo:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickFlyTo, "get_fly_to")
 	return fly_to
 
 
-## 获取重挂件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取重挂件：树序第一个；全量访问走 [method get_performances]。
 func get_reparent() -> QuickReparent:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickReparent, "get_reparent")
 	return reparent
 
 
-## 获取脚本属性 Tween 件：树序第一个；多实例时警告，全量访问走 [method get_performances]。
+## 获取脚本属性 Tween 件：树序第一个；全量访问走 [method get_performances]。
 func get_tween_float() -> QuickTweenFloat:
 	_cache_quick_nodes()
-	_warn_if_multiple(QuickTweenFloat, "get_tween_float")
 	return tween_float
 
 
@@ -368,7 +370,7 @@ func play() -> void:
 	# 编辑器空闲不起播；整树预览会话期间放行（见文末预览区）。
 	if Engine.is_editor_hint() and not _preview.is_active():
 		return
-	_play_generation += 1
+	_cancel_tree_playback()
 	_run_tree_playback(_play_generation)
 
 
@@ -416,7 +418,11 @@ func _play_step_node(node: Node, generation: int) -> bool:
 	var step_ok: bool = await _play_step(
 		node, &"play", node.play_finished, _step_wait_timeout(node), generation
 	)
-	_active_step_nodes.erase(node)
+	if generation == _play_generation:
+		if step_ok:
+			_active_step_nodes.erase(node)
+		else:
+			_cancel_tree_playback()
 	if step_ok:
 		_register_step_final_rest(node, true)
 	return step_ok
@@ -429,17 +435,26 @@ func _play_step_node(node: Node, generation: int) -> bool:
 func _play_step(node: Node, method: StringName, completion: Signal, timeout: float, generation: int) -> bool:
 	var fired: Array = [false]
 	var on_done := func(_signal_arg = null) -> void: fired[0] = true
+	var on_cancel := func() -> void: _on_step_cancelled(generation)
 	completion.connect(on_done, CONNECT_ONE_SHOT)
+	if node.has_signal("play_cancelled"):
+		node.connect("play_cancelled", on_cancel, CONNECT_ONE_SHOT)
 	var started: bool = node.call(method)
-	if not started:
-		if not fired[0] and completion.is_connected(on_done):
+	var completed := generation == _play_generation and is_inside_tree() and is_instance_valid(node) and node.is_inside_tree() and not node.is_queued_for_deletion()
+	if started and not fired[0] and completed:
+		completed = await _await_step_completion(node, fired, timeout, generation)
+	if is_instance_valid(node):
+		if completion.is_connected(on_done):
 			completion.disconnect(on_done)
-		return true
-	if fired[0]:
-		# 同步完成路径（时长 0 等在调用帧内发射）：直接返回，避免 await 已完成协程
-		# 让帧——保证后续步骤同帧起播、全部终态当帧走完。
-		return true
-	return await _await_step_completion(node, fired, timeout, generation)
+		if node.has_signal("play_cancelled") and node.is_connected("play_cancelled", on_cancel):
+			node.disconnect("play_cancelled", on_cancel)
+	return completed
+
+
+## 步骤的取消信号归属于接线时的播放代次。
+func _on_step_cancelled(generation: int) -> void:
+	if generation == _play_generation:
+		_cancel_tree_playback()
 
 
 ## 步骤等待超时：按件推导（QuickDelay 取 duration、QuickMousePlace / QuickReparent 取
@@ -448,6 +463,8 @@ func _play_step(node: Node, method: StringName, completion: Signal, timeout: flo
 ## animation_duration、QuickWobble 取 (wobble_sequence.size()+1)*animation_duration、QuickRotate 取 animation_duration），
 ## 加固定余量。
 func _step_wait_timeout(node: Node) -> float:
+	if node.has_method("get_playback_duration"):
+		return maxf(float(node.call("get_playback_duration")), 0.0) + _STEP_TIMEOUT_MARGIN
 	if node is QuickDelay:
 		return node.duration + _STEP_TIMEOUT_MARGIN
 	if node is QuickMousePlace or node is QuickReparent:
@@ -482,7 +499,7 @@ func _await_step_completion(node: Node, fired: Array, timeout: float, generation
 			push_warning("QuickUiAnimHost：演出步骤 %s 等待完成超时（%.2f 秒），跳过继续后续步骤。" % [node.name, timeout])
 			return true
 		await get_tree().process_frame
-	return true
+	return generation == _play_generation and is_inside_tree() and is_instance_valid(node) and node.is_inside_tree() and not node.is_queued_for_deletion()
 
 
 ## 执行同播组步骤：组内演出子节点同帧起播（先挂完成信号再触发播放），统一有界
@@ -492,27 +509,54 @@ func _play_parallel_step(group: Node, generation: int) -> bool:
 	var members := _parallel_members(group)
 	if members.is_empty():
 		return true
-	# 同帧起播全部成员并收集待完成项。
 	var pending: Array = []
 	var started_members: Array = []
+	var connections: Array = []
+	var timeout := _max_step_timeout(members)
+	var members_valid := true
 	for member in members:
+		if generation != _play_generation or not is_inside_tree():
+			break
+		if not is_instance_valid(member) or not member.is_inside_tree() or member.is_queued_for_deletion():
+			members_valid = false
+			break
 		var completion: Signal = member.play_finished
 		var fired: Array = [false]
 		var on_done := func(_signal_arg = null) -> void: fired[0] = true
 		completion.connect(on_done, CONNECT_ONE_SHOT)
+		connections.append([member, completion, on_done])
+		if member.has_signal("play_cancelled"):
+			var on_cancel := func() -> void: _on_step_cancelled(generation)
+			var cancellation := Signal(member, "play_cancelled")
+			cancellation.connect(on_cancel, CONNECT_ONE_SHOT)
+			connections.append([member, cancellation, on_cancel])
+		_track_active_steps([member])
 		var started: bool = member.play()
+		if not is_instance_valid(member) or not member.is_inside_tree() or member.is_queued_for_deletion():
+			members_valid = false
+			break
 		if not started:
-			if not fired[0] and completion.is_connected(on_done):
-				completion.disconnect(on_done)
+			if generation == _play_generation:
+				_active_step_nodes.erase(member)
 			continue
 		pending.append([member, fired])
 		started_members.append(member)
-	_track_active_steps(started_members)
-	if pending.is_empty():
-		return true
-	var step_ok: bool = await _await_parallel_completion(pending, _max_step_timeout(members), generation)
+	var step_ok := members_valid and generation == _play_generation and is_inside_tree()
+	if step_ok and not pending.is_empty():
+		step_ok = await _await_parallel_completion(pending, timeout, generation)
+	if step_ok:
+		for member in started_members:
+			if not is_instance_valid(member) or not member.is_inside_tree() or member.is_queued_for_deletion():
+				step_ok = false
+				break
+	for entry in connections:
+		if is_instance_valid(entry[0]) and entry[1].is_connected(entry[2]):
+			entry[1].disconnect(entry[2])
+	if not step_ok and generation == _play_generation:
+		_cancel_tree_playback()
 	for member in started_members:
-		_active_step_nodes.erase(member)
+		if generation == _play_generation:
+			_active_step_nodes.erase(member)
 		if step_ok:
 			_register_step_final_rest(member, true)
 	return step_ok
@@ -526,14 +570,13 @@ func _await_parallel_completion(pending: Array, timeout: float, generation: int)
 		if generation != _play_generation or not is_inside_tree():
 			return false
 		for entry in pending:
-			var member: Node = entry[0]
-			if not is_instance_valid(member) or not member.is_inside_tree():
+			if not is_instance_valid(entry[0]) or not entry[0].is_inside_tree() or entry[0].is_queued_for_deletion():
 				return false
 		if Time.get_ticks_msec() >= deadline:
 			push_warning("QuickUiAnimHost：同播组等待完成超时（%.2f 秒），跳过继续。" % timeout)
 			return true
 		await get_tree().process_frame
-	return true
+	return generation == _play_generation and is_inside_tree()
 
 
 func _all_parallel_steps_done(pending: Array) -> bool:
@@ -578,12 +621,17 @@ func _has_deep_performance(node: Node, depth: int) -> bool:
 ## 取消进行中的树序播放（剩余步骤不再播放）：重播、交互落笔、宿主退出树等路径
 ## 调用；收回进行中步骤对控件位置的写入，运行中的等待协程在下一帧检测到代次变更
 ## 后以 interrupted 收尾。
+func cancel() -> void:
+	_cancel_tree_playback()
+
+
 func _cancel_tree_playback() -> void:
 	_play_generation += 1
-	for node in _active_step_nodes:
+	var cancelled_steps := _active_step_nodes.duplicate()
+	_active_step_nodes.clear()
+	for node in cancelled_steps:
 		if is_instance_valid(node) and node.has_method("interrupt"):
 			node.call("interrupt")
-	_active_step_nodes.clear()
 
 
 ## 登记进行中步骤的演出节点：同播组多名成员按调用顺序追加。
@@ -766,16 +814,6 @@ func _first_performance_of(script_type: Script) -> Node:
 	return null
 
 
-## 同类演出件多实例时警告：查询接口按树序返回第一个，全量访问走 get_performances。
-func _warn_if_multiple(script_type: Script, api_name: String) -> void:
-	var count := 0
-	for node in _collect_performance_nodes():
-		if is_instance_of(node, script_type):
-			count += 1
-	if count > 1:
-		push_warning("QuickUiAnimHost：%d 个同类演出件并存，%s() 返回树序第一个；全量访问请用 get_performances()。" % [count, api_name])
-
-
 ## 收集宿主名下全部演出节点（树序扁平）：直接子节点中实现播放契约者，
 ## 及同播组一层内的演出子节点；更深的嵌套属编排错误（播放期警告）不收录。
 func _collect_performance_nodes() -> Array:
@@ -820,6 +858,8 @@ func _performance_base_name(kind: PerformanceKind) -> String:
 			return "QuickParallel"
 		PerformanceKind.DELAY:
 			return "QuickDelay"
+		PerformanceKind.POINTER_PULL:
+			return "QuickPointerPull"
 	return "Performance"
 
 
@@ -880,6 +920,10 @@ func _add_tween_float_performance() -> void:
 
 func _add_parallel_performance() -> void:
 	add_performance(PerformanceKind.PARALLEL)
+
+
+func _add_pointer_pull_performance() -> void:
+	add_performance(PerformanceKind.POINTER_PULL)
 
 
 func _add_delay_performance() -> void:

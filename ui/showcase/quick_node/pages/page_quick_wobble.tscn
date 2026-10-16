@@ -1,0 +1,122 @@
+[gd_scene format=3 uid="uid://csk6bqabpjshf"]
+
+[ext_resource type="Script" uid="uid://cs52y3lkymyxs" path="res://addons/gdbase/ui/showcase/quick_node/pages/page_quick_wobble.gd" id="1_page"]
+[ext_resource type="Script" uid="uid://cowa42jh5mafo" path="res://addons/gdbase/ui/quick_node/quick_ui_anim_host.gd" id="2_host"]
+[ext_resource type="Script" uid="uid://gslvdwntkuyh" path="res://addons/gdbase/ui/quick_node/quick_parallel.gd" id="3_parallel"]
+[ext_resource type="Script" uid="uid://b1g5y8nnfmlvb" path="res://addons/gdbase/ui/quick_node/quick_zoom.gd" id="4_zoom"]
+[ext_resource type="Script" uid="uid://nl8l4sfn1snp" path="res://addons/gdbase/ui/quick_node/quick_wobble.gd" id="5_wobble"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_card"]
+content_margin_left = 14.0
+content_margin_top = 10.0
+content_margin_right = 14.0
+content_margin_bottom = 10.0
+bg_color = Color(0.45, 0.3, 0.55, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+
+[node name="PageQuickWobble" type="Control" unique_id=1078889913]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_page")
+
+[node name="HostCard" type="Panel" parent="." unique_id=428601517]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 200)
+layout_mode = 0
+offset_left = 430.0
+offset_top = 150.0
+offset_right = 810.0
+offset_bottom = 350.0
+pivot_offset = Vector2(190, 100)
+theme_override_styles/panel = SubResource("StyleBoxFlat_card")
+scale = Vector2(0, 0)
+
+[node name="Caption" type="Label" parent="HostCard" unique_id=1885588761]
+layout_mode = 0
+offset_left = 14.0
+offset_top = 10.0
+offset_right = 14.0
+offset_bottom = 10.0
+theme_override_font_sizes/font_size = 15
+text = "QuickZoom × QuickWobble 宿主
+（普通 Panel，缩放与晃动叠加）"
+
+[node name="EnterHost" type="Node" parent="HostCard"]
+unique_name_in_owner = true
+script = ExtResource("2_host")
+animate_entrance = false
+
+[node name="QuickParallel" type="Node" parent="HostCard/EnterHost"]
+script = ExtResource("3_parallel")
+
+[node name="Zoom" type="Node" parent="HostCard/EnterHost/QuickParallel" node_paths=PackedStringArray("ui")]
+unique_name_in_owner = true
+script = ExtResource("4_zoom")
+ui = NodePath("../../../")
+animation_duration = 0.28
+
+[node name="Rotate" type="Node" parent="HostCard/EnterHost/QuickParallel" node_paths=PackedStringArray("ui")]
+unique_name_in_owner = true
+script = ExtResource("5_wobble")
+ui = NodePath("../../../")
+animation_duration = 0.28
+
+[node name="ExitHost" type="Node" parent="HostCard"]
+unique_name_in_owner = true
+script = ExtResource("2_host")
+animate_entrance = false
+
+[node name="Zoom" type="Node" parent="HostCard/ExitHost" node_paths=PackedStringArray("ui")]
+script = ExtResource("4_zoom")
+ui = NodePath("../../")
+target_scale = Vector2(0, 0)
+animation_duration = 0.28
+
+[node name="Toolbar" type="HBoxContainer" parent="." unique_id=604986650]
+layout_mode = 0
+offset_left = 350.0
+offset_top = 410.0
+offset_right = 350.0
+offset_bottom = 410.0
+theme_override_constants/separation = 8
+
+[node name="ButtonExpand" type="Button" parent="Toolbar" unique_id=1921784410]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "弹出"
+
+[node name="ButtonCollapse" type="Button" parent="Toolbar" unique_id=1352482245]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "收起"
+
+[node name="ButtonDirection" type="Button" parent="Toolbar" unique_id=1660972178]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "换晃动方向"
+
+[node name="Hint" type="Label" parent="." unique_id=862184066]
+layout_mode = 0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 24.0
+offset_top = -64.0
+offset_right = -24.0
+offset_bottom = -24.0
+theme_override_font_sizes/font_size = 14
+text = "QuickZoom 只动 scale/pivot，QuickWobble 只动 rotation——两者互不认识；入场宿主的同播组把「放大展开」与「晃动一次」同帧齐播、全部完成该步才结束，离场宿主缩回收起端（BACK 曲线过冲后恰好归零）；「换晃动方向」翻转序列各角符号。"
+autowrap_mode = 3
+
+[connection signal="pressed" from="Toolbar/ButtonExpand" to="HostCard/EnterHost" method="play"]
+[connection signal="pressed" from="Toolbar/ButtonCollapse" to="HostCard/ExitHost" method="play"]

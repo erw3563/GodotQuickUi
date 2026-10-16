@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://h2lx3dwcbelb"]
+
+[ext_resource type="PackedScene" path="res://addons/gdbase/ui/showcase/layout_node/pages/page_orbit_track.tscn" id="14_orbit"]
+[ext_resource type="PackedScene" path="res://addons/gdbase/ui/showcase/layout_node/pages/page_deal_box.tscn" id="16_deal"]
+[ext_resource type="PackedScene" path="res://addons/gdbase/showcase/showcase_sandbox.tscn" id="base"]
+[ext_resource type="Script" uid="uid://qx48fv8fixnk" path="res://addons/gdbase/showcase/showcase_entry.gd" id="entry"]
+
+[sub_resource type="Resource" id="Entry_orbit_track"]
+script = ExtResource("entry")
+id = &"orbit_track"
+title = "环形排列与拨盘 OrbitTrack"
+scene = ExtResource("14_orbit")
+
+[sub_resource type="Resource" id="Entry_deal_box"]
+script = ExtResource("entry")
+id = &"deal_box"
+title = "发牌盒容器 DealBox"
+scene = ExtResource("16_deal")
+
+[node name="LayoutNodeShowcaseSandbox" unique_id=1863549804 instance=ExtResource("base")]
+title = "排列节点演示台"
+entries = Array[ExtResource("entry")]([SubResource("Entry_orbit_track"), SubResource("Entry_deal_box")])

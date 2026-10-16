@@ -1,0 +1,58 @@
+[gd_scene load_steps=7 format=3]
+[ext_resource type="Script" path="res://addons/gdbase/ui/three_weight_path/three_weight_path.gd" id="1"]
+[ext_resource type="Script" path="res://addons/gdbase/ui/procedural_animation/path_reveal_2d.gd" id="2"]
+[ext_resource type="Resource" path="res://addons/gdbase/ui/three_weight_path/presets/thin.tres" id="3"]
+[ext_resource type="Resource" path="res://addons/gdbase/ui/three_weight_path/presets/normal.tres" id="4"]
+[ext_resource type="Resource" path="res://addons/gdbase/ui/three_weight_path/presets/thick.tres" id="5"]
+[ext_resource type="Script" path="res://addons/gdbase/ui/animated_grid_background/animated_grid_background.gd" id="6"]
+[node name="ThreeWeightPath" type="Control"]
+custom_minimum_size = Vector2(450, 600)
+offset_right = 450.0
+offset_bottom = 600.0
+clip_contents = true
+mouse_filter = 2
+script = ExtResource("1")
+[node name="Grid" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("6")
+geometry = 1
+spacing = 8.0
+column_count = 80
+row_count = 100
+center_ratio = Vector2(0.5, 0.5)
+stroke_color = Color(0.22, 0.45, 0.98, 0.18)
+major_stroke_color = Color(0.32, 0.60, 1, 0.22)
+stroke_width = 0.5
+major_stroke_width = 0.6
+major_every = 5
+background_enabled = true
+background_color = Color(0.016, 0.08, 0.46, 1)
+[node name="Paths" type="Node2D" parent="."]
+[node name="Thin" type="Node2D" parent="Paths"]
+position = Vector2(185, 294)
+script = ExtResource("2")
+definition = ExtResource("3")
+subdivision = 512
+color = Color(0.72, 0.85, 1, 0.9)
+feather = 0.001
+pattern_strength = 0.0
+[node name="Normal" type="Node2D" parent="Paths"]
+position = Vector2(295, 300)
+script = ExtResource("2")
+definition = ExtResource("4")
+subdivision = 512
+color = Color(0.88, 0.94, 1, 1)
+feather = 0.001
+pattern_strength = 0.0
+[node name="Thick" type="Node2D" parent="Paths"]
+position = Vector2(225, 300)
+script = ExtResource("2")
+definition = ExtResource("5")
+subdivision = 512
+color = Color(1, 1, 0.98, 1)
+feather = 0.001
+pattern_strength = 0.0

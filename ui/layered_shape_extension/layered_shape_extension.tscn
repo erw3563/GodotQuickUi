@@ -1,0 +1,32 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://addons/gdbase/ui/layered_shape_extension/layered_shape_extension.gd" id="1"]
+
+[node name="LayeredShapeExtension" type="Control"]
+layout_mode = 3
+offsets_preset = 0
+offset_right = 480.0
+offset_bottom = 180.0
+mouse_filter = 2
+script = ExtResource("1")
+
+[node name="Source" type="SubViewport" parent="."]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(512, 212)
+render_target_update_mode = 4
+
+[node name="Content" type="Control" parent="Source"]
+clip_contents = true
+layout_mode = 0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 496.0
+offset_bottom = 196.0
+mouse_filter = 2
+
+[node name="Surface" type="TextureRect" parent="."]
+layout_mode = 0
+mouse_filter = 2
+expand_mode = 1
+texture_filter = 2

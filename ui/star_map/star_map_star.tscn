@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://addons/gdbase/ui/star_map/star_map_star.gd" id="star"]
+
+[ext_resource type="Script" path="res://addons/gdbase/ui/star_map/level_node_glyph.gd" id="glyph"]
+
+[node name="Star" type="Node2D"]
+script = ExtResource("star")
+
+[node name="VisualSlot" type="Node2D" parent="."]
+
+[node name="AppearanceClip" type="Control" parent="VisualSlot"]
+layout_mode = 0
+offset_left = -10.0
+offset_top = -12.0
+offset_right = 10.0
+offset_bottom = 12.0
+mouse_filter = 2
+clip_contents = true
+
+[node name="LevelVisual" type="Node2D" parent="VisualSlot/AppearanceClip"]
+position = Vector2(10, 12)
+scale = Vector2(20, 24)
+script = ExtResource("glyph")

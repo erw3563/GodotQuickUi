@@ -4,7 +4,6 @@ extends Node
 ## 缩放演出件：把宿主 [Control] 从当前缩放播放到 [member target_scale]，原点钉在
 ## [member origin_ratio]（缩放全程该点屏幕位置不变）。统一播放契约 play＋
 ## play_finished；[member is_zooming] 为播放查询。
-## 所有权契约：只写宿主的 scale / pivot_offset / mouse_filter，不改 modulate.a、
 ## visible、global_position、size——透明度与可见性归 QuickShow，位置归 QuickPopIn /
 ## QuickPopOut，真实布局全程不变；因此与 QuickConstraints（含 continuous）和位置类
 ## 演出件互不冲突，可叠加挂在同一控件上。
@@ -14,9 +13,19 @@ extends Node
 ## 承载，播放经统一 play 方法）；运行时调用保持无副作用。
 
 signal play_finished
+## 目标重新绑定或退出树时通知宿主结束当前时间线。
+signal play_cancelled
 
 ## 要驱动的宿主控件；为空则尝试使用本组件的父节点（若为 Control）。
-@export var ui: Control
+@export var ui: Control:
+	set(value):
+		if ui == value:
+			return
+		var had_playback := _zoom_target_id != 0
+		_kill_zoom_tween()
+		ui = value
+		if had_playback:
+			play_cancelled.emit()
 
 @export_group("播放效果")
 ## 缩放原点在宿主内的比例坐标（0~1；默认正中心向四周铺开，四角可设 0/1）。
@@ -38,6 +47,8 @@ signal play_finished
 ## 动画过渡类型（默认 BACK 配 EASE_OUT，带回弹弹出感）。
 @export var animation_transition: Tween.TransitionType = Tween.TRANS_BACK
 
+@export var keep_mouse_input: bool = false
+
 ## 动画缓动类型。
 @export var animation_ease: Tween.EaseType = Tween.EASE_OUT
 
@@ -50,17 +61,19 @@ signal play_finished
 ## 是否正在播放缩放动画
 var is_zooming: bool:
 	get:
-		return _zoom_tween != null and _zoom_tween.is_running()
+		return _zoom_tween != null and _zoom_tween.is_valid() and _zoom_tween.is_running()
 
 var _zoom_tween: Tween
-## 宿主场景中配置的鼠标过滤；动画期间临时改为 IGNORE，结束后恢复。
+var _zoom_target: Control
+var _zoom_target_id: int = 0
+var _zoom_end_scale := Vector2.ONE
+var _run_generation: int = 0
+var _input_overridden := false
 var _authored_mouse_filter: Control.MouseFilter = Control.MOUSE_FILTER_STOP
 ## 宿主级整树预览会话标记（编辑器内由 QuickUiAnimHost 开关）：开启时等效本组件预览——
 ## 解锁编辑器隔离与完成信号发射。
 var _host_preview_active := false
-## 同一目标的在播缩放 tween 登记表：后播杀先播，保证 scale 属性同一时刻只有一个
-## 缩放演出在写（入场件与离场件分属两个宿主，互不知晓，由此表仲裁）。
-static var _active_target_tweens: Dictionary = {}
+static var _active_target_zooms: Dictionary = {}
 
 
 func _ready() -> void:
@@ -76,71 +89,83 @@ func _exit_tree() -> void:
 ## 返回是否实际起播或正在播（false = 已处终态或目标缺失，宿主据此把该步视为无操作
 ## 跳过）；播放中再次 play 杀旧建新、从当前缩放重播。
 func play() -> bool:
+	if not _play_context() or not is_inside_tree():
+		return false
 	_resolve_ui()
-	if ui == null:
+	if not is_instance_valid(ui) or not ui.is_inside_tree():
 		return false
-	if not is_zooming and ui.scale.is_equal_approx(target_scale):
+	var target := ui
+	var request_token := _run_generation + 1
+	_kill_zoom_tween()
+	if _run_generation != request_token or not is_instance_valid(target) or ui != target or not target.is_inside_tree():
 		return false
-	if ui.mouse_filter != Control.MOUSE_FILTER_IGNORE:
-		_authored_mouse_filter = ui.mouse_filter
-	_apply_zoom(true)
+	var target_id := target.get_instance_id()
+	var owner_ref: WeakRef = _active_target_zooms.get(target_id)
+	var previous = owner_ref.get_ref() if owner_ref != null else null
+	if is_instance_valid(previous) and previous != self:
+		previous.interrupt()
+	if _run_generation != request_token or not is_inside_tree() or not is_instance_valid(target) or ui != target or not target.is_inside_tree():
+		return false
+	var successor_ref: WeakRef = _active_target_zooms.get(target_id)
+	if successor_ref != null and is_instance_valid(successor_ref.get_ref()):
+		return false
+	if target.scale.is_equal_approx(target_scale):
+		return false
+	_zoom_target = target
+	_zoom_target_id = target_id
+	_zoom_end_scale = target_scale
+	_authored_mouse_filter = target.mouse_filter
+	_active_target_zooms[target_id] = weakref(self)
+	target.tree_exiting.connect(_on_target_tree_exiting)
+	_sync_pivot_offset()
+	var token := _run_generation
+	if animation_duration <= 0.0:
+		target.scale = _zoom_end_scale
+		_release_zoom_session(false)
+		if is_instance_valid(self) and not is_queued_for_deletion() and _run_generation == token + 1:
+			_emit_finished()
+		return true
+	_zoom_tween = target.create_tween()
+	_zoom_tween.set_trans(animation_transition)
+	_zoom_tween.set_ease(animation_ease)
+	_zoom_tween.tween_method(_set_scale_clamped.bind(token), target.scale, _zoom_end_scale, animation_duration)
+	_zoom_tween.chain().tween_callback(_on_zoom_finished.bind(token))
+	if not keep_mouse_input:
+		_input_overridden = true
+		target.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return true
 
 
-func _apply_zoom(animate: bool) -> void:
-	if not _play_context():
-		return
-	if ui == null or not ui.is_inside_tree():
-		return
-	_sync_pivot_offset()
-	if animate and animation_duration > 0.0:
-		_animate_zoom()
-		return
+func interrupt() -> void:
 	_kill_zoom_tween()
-	ui.scale = target_scale
-	ui.mouse_filter = _authored_mouse_filter
-	_emit_finished()
-
-
-## 播放缩放动画：从当前缩放到达目标；先杀掉同目标的既有缩放 tween（后播杀先播）；
-## 动画期间不吞点击，结束后恢复。
-func _animate_zoom() -> void:
-	_kill_zoom_tween()
-	var existing: Tween = _active_target_tweens.get(ui)
-	if existing != null and existing.is_valid():
-		existing.kill()
-	ui.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_zoom_tween = ui.create_tween()
-	_active_target_tweens[ui] = _zoom_tween
-	_zoom_tween.set_trans(animation_transition)
-	_zoom_tween.set_ease(animation_ease)
-	_zoom_tween.tween_method(
-		_set_scale_clamped, ui.scale, target_scale, animation_duration
-	)
-	_zoom_tween.chain().tween_callback(_on_zoom_finished)
 
 
 ## BACK 曲线插值末端可能为负，负 scale 会镜像渲染，钳到 0。
-func _set_scale_clamped(value: Vector2) -> void:
-	if ui == null:
+func _set_scale_clamped(value: Vector2, token: int) -> void:
+	if token != _run_generation or not is_instance_valid(_zoom_target):
 		return
-	ui.scale = Vector2(maxf(value.x, 0.0), maxf(value.y, 0.0))
+	_zoom_target.scale = Vector2(maxf(value.x, 0.0), maxf(value.y, 0.0))
 
 
-func _on_zoom_finished() -> void:
-	_zoom_tween = null
-	if ui != null:
-		var registered: Tween = _active_target_tweens.get(ui)
-		if registered != null and not registered.is_running():
-			_active_target_tweens.erase(ui)
-	ui.mouse_filter = _authored_mouse_filter
-	ui.scale = target_scale
-	_emit_finished()
+func _on_zoom_finished(token: int) -> void:
+	if token != _run_generation or not is_instance_valid(_zoom_target):
+		return
+	_zoom_target.scale = _zoom_end_scale
+	_release_zoom_session(false)
+	if is_instance_valid(self) and not is_queued_for_deletion() and _run_generation == token + 1:
+		_emit_finished()
+
+
+func _on_target_tree_exiting() -> void:
+	var had_playback := _zoom_target_id != 0
+	_kill_zoom_tween()
+	if had_playback:
+		play_cancelled.emit()
 
 
 ## 把 pivot 钉到原点比例处；缩放全程该点屏幕位置保持不变。
 func _sync_pivot_offset() -> void:
-	if ui == null:
+	if not is_instance_valid(ui):
 		return
 	var basis_size := ui.size
 	if basis_size.x <= 0.0 or basis_size.y <= 0.0:
@@ -152,16 +177,35 @@ func _sync_pivot_offset() -> void:
 
 
 func _kill_zoom_tween() -> void:
-	if _zoom_tween != null and _zoom_tween.is_valid():
-		if ui != null and _active_target_tweens.get(ui) == _zoom_tween:
-			_active_target_tweens.erase(ui)
-		_zoom_tween.kill()
+	_release_zoom_session(true)
+
+
+func _release_zoom_session(kill_tween: bool) -> void:
+	_run_generation += 1
+	var target := _zoom_target
+	var target_id := _zoom_target_id
+	var restore_input := _input_overridden
+	var saved_filter := _authored_mouse_filter
+	var tween := _zoom_tween
 	_zoom_tween = null
+	_zoom_target = null
+	_zoom_target_id = 0
+	_input_overridden = false
+	var owner_ref: WeakRef = _active_target_zooms.get(target_id)
+	if owner_ref != null and owner_ref.get_ref() == self:
+		_active_target_zooms.erase(target_id)
+	if kill_tween and tween != null and tween.is_valid():
+		tween.kill()
+	if is_instance_valid(target):
+		if target.tree_exiting.is_connected(_on_target_tree_exiting):
+			target.tree_exiting.disconnect(_on_target_tree_exiting)
+		if restore_input and target.mouse_filter == Control.MOUSE_FILTER_IGNORE:
+			target.mouse_filter = saved_filter
 
 
 ## 若未指定 ui，则当父节点为 Control 时将其作为驱动目标。
 func _resolve_ui() -> void:
-	if ui != null:
+	if is_instance_valid(ui):
 		return
 	var p := get_parent()
 	if p is Control:

@@ -1,0 +1,158 @@
+[gd_scene format=3 uid="uid://c10i4cwvaitbw"]
+
+[ext_resource type="Script" uid="uid://8ukw7vcdpet0" path="res://addons/gdbase/ui/showcase/panel_node/pages/page_rotate_panel.gd" id="1_rotpage"]
+[ext_resource type="Script" uid="uid://yxrw7eal5sns" path="res://addons/gdbase/ui/panel_node/rotate_panel.gd" id="2_rotpanel"]
+
+[node name="PageRotatePanel" type="Control" unique_id=1965097375]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_rotpage")
+
+[node name="HotZone" type="ColorRect" parent="." unique_id=1442171192]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 240.0
+offset_top = 160.0
+offset_right = 500.0
+offset_bottom = 360.0
+mouse_filter = 2
+color = Color(0.35, 0.65, 1, 0.1)
+
+[node name="RotatePanel" type="PanelContainer" parent="." unique_id=910334597]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 220)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -190.0
+offset_top = -110.0
+offset_right = 190.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_rotpanel")
+
+[node name="Content" type="VBoxContainer" parent="RotatePanel" unique_id=1440190848]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="RotatePanel/Content" unique_id=1308852610]
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "RotatePanel"
+
+[node name="Note" type="Label" parent="RotatePanel/Content" unique_id=1397388258]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "交互触发一次旋转晃动：依次停靠序列各角后收常态角
+（播放中再触发从头重播）"
+
+[node name="Toolbar" type="HBoxContainer" parent="." unique_id=1645648383]
+layout_mode = 0
+offset_left = 23.0
+offset_top = 504.0
+offset_right = 475.0
+offset_bottom = 534.0
+theme_override_constants/separation = 8
+
+[node name="ButtonRest" type="Button" parent="Toolbar" unique_id=1891579218]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "停止归零"
+
+[node name="ButtonPose1" type="Button" parent="Toolbar" unique_id=578016220]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "序列=轻晃"
+
+[node name="ButtonPose2" type="Button" parent="Toolbar" unique_id=1676883611]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "序列=往返"
+
+[node name="ButtonPose3" type="Button" parent="Toolbar" unique_id=648190932]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "序列=整圈"
+
+[node name="ButtonPlaySequence" type="Button" parent="Toolbar" unique_id=519408025]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "晃一次"
+
+[node name="Toolbar2" type="HBoxContainer" parent="." unique_id=1700611839]
+layout_mode = 0
+offset_left = 23.0
+offset_top = 540.0
+offset_right = 723.0
+offset_bottom = 570.0
+theme_override_constants/separation = 8
+
+[node name="ButtonPresetDefault" type="Button" parent="Toolbar2" unique_id=1558617099]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "方案=小摆"
+
+[node name="ButtonPresetBidirectional" type="Button" parent="Toolbar2" unique_id=1458018322]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "方案=双向大摆"
+
+[node name="CheckElastic" type="CheckBox" parent="Toolbar2" unique_id=1156058510]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "弹性15°"
+
+[node name="ButtonOriginCenter" type="Button" parent="Toolbar2" unique_id=1702527171]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "轴心=中心"
+
+[node name="ButtonOriginTopLeft" type="Button" parent="Toolbar2" unique_id=1183540421]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "轴心=左上"
+
+[node name="Toolbar3" type="HBoxContainer" parent="." unique_id=889371084]
+layout_mode = 0
+offset_left = 23.0
+offset_top = 576.0
+offset_right = 426.0
+offset_bottom = 606.0
+theme_override_constants/separation = 8
+
+[node name="CheckHover" type="CheckBox" parent="Toolbar3" unique_id=498602631]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "悬停连播"
+
+[node name="CheckClick" type="CheckBox" parent="Toolbar3" unique_id=1115087942]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "点击切换"
+
+[node name="CheckExternalZone" type="CheckBox" parent="Toolbar3" unique_id=739988704]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "外部热区"

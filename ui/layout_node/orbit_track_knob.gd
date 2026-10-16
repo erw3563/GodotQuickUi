@@ -15,10 +15,46 @@ extends Control
 ## 停在原档位不重复发出，轨道清空子控件时以 null 播报。
 signal detent_changed(detent_control: Control)
 
-## 轨道半径（像素）。
-@export var orbit_radius := 160.0
+## 椭圆 X / Y 半径（像素）。相等时为圆形；零分量可表达线形或点形轨道。
+@export var orbit_radii := Vector2(160.0, 160.0):
+	set(value):
+		orbit_radii = Vector2(maxf(value.x, 0.0) if is_finite(value.x) else 0.0,
+			maxf(value.y, 0.0) if is_finite(value.y) else 0.0)
+		if is_node_ready():
+			reset_motion()
+## 沿轨道移动的相位。Control.rotation 控制椭圆固定朝向。
+@export var orbit_phase := 0.0:
+	set(value):
+		orbit_phase = value if is_finite(value) else 0.0
+		if is_node_ready():
+			relayout_slots()
 ## 基准槽位角（默认 -90° 即环的正上方）：档位角把该档位对应的子控件转到该角。
-@export var slot_start_angle := -PI / 2.0
+@export var slot_start_angle := -PI / 2.0:
+	set(value):
+		slot_start_angle = value if is_finite(value) else 0.0
+		if is_node_ready(): reset_motion()
+
+@export_group("运动倾斜")
+## 按速度水平分量倾斜；与弹簧独立组合，默认关。
+@export var motion_lean_enabled := false:
+	set(value):
+		motion_lean_enabled = value
+		if is_node_ready(): reset_motion()
+@export_range(0.0, 90.0, 0.1) var lean_max_degrees := 15.0
+## 每 px/s 水平速度对应的倾角（度）；负值反向。
+@export var lean_velocity_scale := 0.035
+
+@export_group("惯性弹簧")
+## 加速度驱动的有限惯性偏移与旋转，默认关；理想椭圆与相位独立持有。
+@export var spring_enabled := false:
+	set(value):
+		spring_enabled = value
+		if is_node_ready(): reset_motion()
+@export_range(0.1, 20.0, 0.1) var spring_frequency_hz := 2.2
+@export_range(0.02, 3.0, 0.01) var spring_damping_ratio := 0.32
+@export_range(0.0, 3.0, 0.01) var spring_inertia := 1.0
+@export_range(0.0, 1000.0, 1.0) var spring_max_offset_pixels := 48.0
+@export_range(0.0, 90.0, 0.1) var spring_max_rotation_degrees := 12.0
 
 @export_group("拨盘拖动")
 ## 是否启用鼠标拨盘拖动；关闭时中断进行中的拨动与归位补间。
@@ -48,6 +84,8 @@ signal detent_changed(detent_control: Control)
 ## 参数为视口坐标的按键事件，轨道不认识业务对象。
 var rotary_drag_filter: Callable
 
+var _watched_controls: Array[Control] = []
+var _motion := OrbitMotion.new()
 var _rotary_dragging := false
 var _rotary_pointer_angle := 0.0
 var _snap_tween: Tween
@@ -57,19 +95,21 @@ var _detent_control: Control
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pivot_offset_ratio = Vector2.ZERO
 	pivot_offset = size * 0.5
 	if not resized.is_connected(_on_resized):
 		resized.connect(_on_resized)
 	# 编辑器内保留作者摆放的轨道角度，运行时把轨道对到最近的档位。
 	if not Engine.is_editor_hint():
-		rotation = get_nearest_detent_angle()
+		orbit_phase = get_nearest_detent_angle()
 	relayout_slots()
 	_sync_processing()
 	# 子控件的就绪早于本节点，就绪时的当前档位作为播报基准。
 	_detent_control = get_current_detent_control()
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	_advance_motion(delta)
 	relayout_slots()
 
 
@@ -80,6 +120,8 @@ func _notification(what: int) -> void:
 
 
 func _exit_tree() -> void:
+	_rotary_dragging = false
+	_motion.reset()
 	_kill_snap_tween()
 
 
@@ -139,11 +181,11 @@ func get_current_detent_control() -> Control:
 	return orbit_controls[_current_detent_index(orbit_controls.size())]
 
 
-## 与当前 rotation 最近的档位角（绝对角，保留圈数）：多圈拖动只退到最近的档位。
+## 与当前 orbit_phase 最近的档位角（绝对角，保留圈数）：多圈拖动只退到最近的档位。
 func get_nearest_detent_angle() -> float:
 	if get_orbit_control_count() == 0:
-		return rotation
-	return roundf(rotation / get_detent_step()) * get_detent_step()
+		return orbit_phase
+	return roundf(orbit_phase / get_detent_step()) * get_detent_step()
 
 
 ## 归位补间是否进行中。
@@ -151,7 +193,7 @@ func is_detent_snapping() -> bool:
 	return _snap_tween != null and is_instance_valid(_snap_tween)
 
 
-## 转到指定子控件所在的档位：取当前圈内离 rotation 最近的同档位角，animated 为 false
+## 转到指定子控件所在的档位：取当前圈内离 orbit_phase 最近的同档位角，animated 为 false
 ## 时立即落位。目标档位一经确定即按子控件变化播报；目标不是本轨道的直接子控件时告警忽略。
 func set_detent_control(control: Control, animated := true) -> void:
 	if control == null:
@@ -162,7 +204,7 @@ func set_detent_control(control: Control, animated := true) -> void:
 	if detent_index < 0:
 		push_warning("OrbitTrackKnob 设档：目标不是本轨道的直接子控件，已忽略。")
 		return
-	var target := _detent_angle_near_rotation(detent_index, orbit_controls.size())
+	var target := _detent_angle_near_phase(detent_index, orbit_controls.size())
 	_kill_snap_tween()
 	if animated:
 		_rotate_to_detent(target)
@@ -180,12 +222,24 @@ func relayout_slots() -> void:
 	var track_center := size * 0.5
 	for slot_index in slot_count:
 		var control := orbit_controls[slot_index]
-		var angle := slot_start_angle + TAU * float(slot_index) / float(slot_count)
-		var slot_center := track_center + Vector2(cos(angle), sin(angle)) * orbit_radius
+		var angle := orbit_phase + slot_start_angle + TAU * float(slot_index) / float(slot_count)
+		var slot_center := track_center + Vector2(cos(angle), sin(angle)) * orbit_radii
 		# 反向旋转必须绕控件中心，否则不同尺寸控件的实际显示中心会偏离轨道槽位。
+		control.pivot_offset_ratio = Vector2.ZERO
 		control.pivot_offset = control.size * 0.5
 		control.rotation = -rotation
-		control.position = slot_center - control.size * 0.5
+		control.position = slot_center - control.size * 0.5 + _motion.get_offset(control)
+		control.rotation += _motion.get_rotation(control)
+
+
+## 理想槽位中心（轨道局部坐标），由椭圆半径、相位与槽位序号计算。
+func get_slot_center(slot_index: int, slot_count: int = -1) -> Vector2:
+	if slot_count < 0:
+		slot_count = get_orbit_control_count()
+	if slot_count <= 0:
+		return size * 0.5
+	var angle := orbit_phase + slot_start_angle + TAU * float(slot_index) / float(slot_count)
+	return size * 0.5 + Vector2(cos(angle), sin(angle)) * orbit_radii
 
 
 ## 当前直接 Control 子节点，按场景树顺序返回。排除已 queue_free 等待释放的节点：
@@ -214,16 +268,16 @@ func get_track_center_global() -> Vector2:
 ## 的角度），重排槽位，并按当前档位子控件的变化播报。
 func _refresh_detents() -> void:
 	if not Engine.is_editor_hint() and not _rotary_dragging and not is_detent_snapping():
-		rotation = get_nearest_detent_angle()
+		orbit_phase = get_nearest_detent_angle()
 	relayout_slots()
 	_sync_processing()
 	_announce_current_detent()
 
 
-## 拖动跟手后立即重排并按新档位播报：信号回调里读到的槽位与 rotation 同步。
+## 拖动跟手后立即重排并按新档位播报：信号回调里读到的槽位与 orbit_phase 同步。
 func _track_rotary_pointer(pointer_canvas_position: Vector2) -> void:
 	var pointer_angle := (pointer_canvas_position - get_track_center_global()).angle()
-	rotation += angle_difference(_rotary_pointer_angle, pointer_angle)
+	orbit_phase += angle_difference(_rotary_pointer_angle, pointer_angle)
 	_rotary_pointer_angle = pointer_angle
 	relayout_slots()
 	_announce_current_detent()
@@ -236,7 +290,7 @@ func _start_detent_snap_if_needed() -> void:
 	_rotate_to_detent(get_nearest_detent_angle())
 
 
-## 按当前 rotation 归属的档位播报；档位子控件未变化时不发信号。
+## 按当前 orbit_phase 归属的档位播报；档位子控件变化时发出信号。
 func _announce_current_detent() -> void:
 	_announce_detent_control(get_current_detent_control())
 
@@ -248,20 +302,20 @@ func _announce_detent_control(control: Control) -> void:
 	detent_changed.emit(control)
 
 
-## rotation 归属的档位序号：顺时针拖动时轨道角增大，序号沿子控件顺序递减。
+## orbit_phase 归属的档位序号：顺时针拖动时轨道角增大，序号沿子控件顺序递减。
 func _current_detent_index(detent_count: int) -> int:
-	return posmod(-roundi(rotation / (TAU / float(detent_count))), detent_count)
+	return posmod(-roundi(orbit_phase / (TAU / float(detent_count))), detent_count)
 
 
-## 档位序号在当前圈内的绝对角：与 rotation 的差落在半档以内。
-func _detent_angle_near_rotation(detent_index: int, detent_count: int) -> float:
+## 档位序号在当前圈内的绝对角：与 orbit_phase 的差落在半档以内。
+func _detent_angle_near_phase(detent_index: int, detent_count: int) -> float:
 	var detent_angle := -float(posmod(detent_index, detent_count)) * (TAU / float(detent_count))
-	return detent_angle + roundf((rotation - detent_angle) / TAU) * TAU
+	return detent_angle + roundf((orbit_phase - detent_angle) / TAU) * TAU
 
 
 ## 转到目标档位角：已经在该角上时不启动补间；补间时长取 0 或节点未入树时立即落位。
 func _rotate_to_detent(target_angle: float) -> void:
-	if is_equal_approx(rotation, target_angle):
+	if is_equal_approx(orbit_phase, target_angle):
 		return
 	if detent_snap_duration_seconds <= 0.0 or not is_inside_tree():
 		_rotate_to_detent_now(target_angle)
@@ -270,7 +324,7 @@ func _rotate_to_detent(target_angle: float) -> void:
 
 
 func _rotate_to_detent_now(target_angle: float) -> void:
-	rotation = target_angle
+	orbit_phase = target_angle
 	relayout_slots()
 	_sync_processing()
 
@@ -279,7 +333,7 @@ func _start_detent_tween(target_angle: float) -> void:
 	_snap_tween = create_tween()
 	_snap_tween.set_trans(detent_snap_transition).set_ease(detent_snap_ease)
 	_snap_tween.finished.connect(_on_detent_snap_finished)
-	_snap_tween.tween_property(self, "rotation", target_angle, detent_snap_duration_seconds)
+	_snap_tween.tween_property(self, "orbit_phase", target_angle, detent_snap_duration_seconds)
 
 
 ## 归位补间结束：复位补间状态，按最终角度重排一次（补间末帧与本节点 _process 的顺序不保证）。
@@ -303,7 +357,12 @@ func _cancel_rotary_interaction() -> void:
 
 ## 把当前子控件的 resized 信号接到重排上：控件自身尺寸变化（非增删）时也重新收敛。
 func _ensure_control_resize_listeners() -> void:
-	for control in get_orbit_controls():
+	for previous in _watched_controls:
+		if is_instance_valid(previous) and previous.get_parent() != self:
+			if previous.resized.is_connected(_on_control_resized):
+				previous.resized.disconnect(_on_control_resized)
+	_watched_controls = get_orbit_controls()
+	for control in _watched_controls:
 		if not control.resized.is_connected(_on_control_resized):
 			control.resized.connect(_on_control_resized)
 
@@ -313,6 +372,7 @@ func _on_control_resized() -> void:
 
 
 func _on_resized() -> void:
+	pivot_offset_ratio = Vector2.ZERO
 	pivot_offset = size * 0.5
 	relayout_slots()
 
@@ -341,4 +401,18 @@ func _sync_processing() -> void:
 	if Engine.is_editor_hint():
 		set_process(false)
 		return
-	set_process(_rotary_dragging or is_detent_snapping())
+	set_process(spring_enabled or motion_lean_enabled or _rotary_dragging or is_detent_snapping())
+
+
+## 清除速度导数/弹簧/倾斜历史，立即回到理想位置。用于传送、重新绑定与手动复位。
+func reset_motion() -> void:
+	_motion.reset()
+	if is_inside_tree():
+		relayout_slots()
+		_sync_processing()
+
+
+func _advance_motion(delta: float) -> void:
+	if Engine.is_editor_hint() or not (spring_enabled or motion_lean_enabled):
+		return
+	_motion.step(self, get_orbit_controls(), delta)

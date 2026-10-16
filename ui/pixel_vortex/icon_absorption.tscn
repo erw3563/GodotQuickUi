@@ -1,0 +1,20 @@
+[gd_scene format=3 uid="uid://ch5ielb8se658"]
+
+[ext_resource type="Script" uid="uid://dlkhnhkvtfmwu" path="res://addons/gdbase/ui/pixel_vortex/icon_absorption.gd" id="1_nvqj8"]
+
+[node name="IconAbsorption" type="Control" unique_id=773148014]
+z_index = 101
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("1_nvqj8")
+
+[node name="Icon" type="TextureRect" parent="." unique_id=850328983]
+visible = false
+texture_filter = 1
+layout_mode = 0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5

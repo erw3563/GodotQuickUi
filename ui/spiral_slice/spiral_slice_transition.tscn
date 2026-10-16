@@ -1,0 +1,36 @@
+[gd_scene load_steps=2 format=3]
+[ext_resource type="Script" path="res://addons/gdbase/ui/spiral_slice/spiral_slice_transition.gd" id="1"]
+[node name="SpiralSliceTransition" type="Control"]
+layout_mode = 3
+offset_right = 560.0
+offset_bottom = 320.0
+mouse_filter = 2
+script = ExtResource("1")
+[node name="ContentA" type="SubViewport" parent="."]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(560, 320)
+render_target_update_mode = 4
+[node name="Root" type="Control" parent="ContentA"]
+layout_mode = 0
+offset_right = 560.0
+offset_bottom = 320.0
+mouse_filter = 2
+[node name="ContentB" type="SubViewport" parent="."]
+transparent_bg = true
+handle_input_locally = false
+size = Vector2i(560, 320)
+render_target_update_mode = 4
+[node name="Root" type="Control" parent="ContentB"]
+layout_mode = 0
+offset_right = 560.0
+offset_bottom = 320.0
+mouse_filter = 2
+[node name="Surface" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2

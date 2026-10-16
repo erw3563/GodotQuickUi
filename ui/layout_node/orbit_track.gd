@@ -17,19 +17,59 @@ extends Control
 
 ## 发牌动画全部物品落位后发出（空轨道起播也立即发，等待语义一致）。
 signal deal_finished
+## 全批已到中心；此信号回调可以安全中断或重启。
+signal transfer_gathered
+## 当前汇聚与发牌操作自然完成时发出。
+signal transfer_finished
 
-## 轨道半径（像素）。
-@export var orbit_radius := 160.0
+## 椭圆 X / Y 半径（像素）。相等时为圆形；零分量可表达线形或点形轨道。
+@export var orbit_radii := Vector2(160.0, 160.0):
+	set(value):
+		orbit_radii = Vector2(maxf(value.x, 0.0) if is_finite(value.x) else 0.0,
+			maxf(value.y, 0.0) if is_finite(value.y) else 0.0)
+		if is_node_ready():
+			reset_motion()
+## 沿轨道移动的相位。Control.rotation 控制椭圆固定朝向。
+@export var orbit_phase := 0.0:
+	set(value):
+		orbit_phase = value if is_finite(value) else 0.0
+		if is_node_ready():
+			relayout_slots()
 ## 自转角速度（弧度/秒）。
 @export var rotation_speed := 0.5
 ## 首槽位角度（默认 -90° 即环的正上方）。
-@export var slot_start_angle := -PI / 2.0
+@export var slot_start_angle := -PI / 2.0:
+	set(value):
+		slot_start_angle = value if is_finite(value) else 0.0
+		if is_node_ready(): reset_motion()
 ## 是否持续自转；暂停后子控件停在当前角度。
 @export var auto_spin := true:
 	set(value):
 		auto_spin = value
 		if is_node_ready():
 			_sync_processing()
+
+@export_group("运动倾斜")
+## 按速度水平分量倾斜；与弹簧独立组合，默认关。
+@export var motion_lean_enabled := false:
+	set(value):
+		motion_lean_enabled = value
+		if is_node_ready(): reset_motion()
+@export_range(0.0, 90.0, 0.1) var lean_max_degrees := 15.0
+## 每 px/s 水平速度对应的倾角（度）；负值反向。
+@export var lean_velocity_scale := 0.035
+
+@export_group("惯性弹簧")
+## 加速度驱动的有限惯性偏移与旋转，默认关；理想椭圆与相位独立持有。
+@export var spring_enabled := false:
+	set(value):
+		spring_enabled = value
+		if is_node_ready(): reset_motion()
+@export_range(0.1, 20.0, 0.1) var spring_frequency_hz := 2.2
+@export_range(0.02, 3.0, 0.01) var spring_damping_ratio := 0.32
+@export_range(0.0, 3.0, 0.01) var spring_inertia := 1.0
+@export_range(0.0, 1000.0, 1.0) var spring_max_offset_pixels := 48.0
+@export_range(0.0, 90.0, 0.1) var spring_max_rotation_degrees := 12.0
 
 @export_group("拨盘拖动")
 ## 是否启用鼠标拨盘拖动：按住后轨道跟随指针绕环心旋转，松手后可选回正。
@@ -55,6 +95,10 @@ signal deal_finished
 @export var snap_back_fixed_duration := false
 ## 回正死区（度）：松手时与回正目标的角距小于该值则不再补间。
 @export_range(0, 360) var snap_back_dead_zone_degrees := 15.0
+
+@export_group("布局切换")
+## transfer_controls 的整批汇聚时长；0 或 animated=false 立即采用最终排布。
+@export_range(0.0, 5.0, 0.01) var transfer_duration_seconds := 0.6
 
 @export_group("发牌动画")
 ## 发牌起播模式。
@@ -92,9 +136,17 @@ enum DealLaunchMode {
 ## 参数为视口坐标的按键事件，轨道不认识库存或其它业务对象。
 var rotary_drag_filter: Callable
 
+var _transfer_records: Array[Dictionary] = []
+var _transfer_gathering := false
+var _transfer_pending_deal := false
+var _transfer_reparenting := false
+var _transfer_clock := 0.0
+var _transfer_generation := 0
+var _watched_controls: Array[Control] = []
+var _motion := OrbitMotion.new()
 var _rotary_dragging := false
 var _rotary_pointer_angle := 0.0
-var _rotary_rest_rotation := 0.0
+var _rotary_rest_phase := 0.0
 var _snap_back_tween: Tween
 var _deal_playing := false
 var _deal_clock := 0.0
@@ -113,6 +165,7 @@ var _seen_child_instance_ids := {}
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	pivot_offset_ratio = Vector2.ZERO
 	pivot_offset = size * 0.5
 	if !resized.is_connected(_on_resized):
 		resized.connect(_on_resized)
@@ -122,6 +175,11 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	if not is_finite(delta) or delta <= 0.0:
+		return
+	if _transfer_gathering:
+		_advance_transfer(delta)
+		return
 	if _deal_playing:
 		_deal_clock += delta
 		if _deal_clock >= _deal_total:
@@ -129,7 +187,8 @@ func _process(delta: float) -> void:
 	_advance_entrance_flights(delta)
 	if auto_spin and not Engine.is_editor_hint() and not _rotary_dragging \
 			and not _is_snapping_back():
-		rotation += rotation_speed * delta
+		orbit_phase += rotation_speed * delta
+	_advance_motion(delta)
 	relayout_slots()
 
 
@@ -178,6 +237,12 @@ func is_rotary_dragging() -> bool:
 ## 各自槽位；槽位按当前全部子控件（含隐藏者）重算。播放中重播从头再来，且沿用
 ## 首次起播时的可见性快照——不把动画自身隐藏的卡片误判为本来就隐藏。
 func play_deal_animation() -> void:
+	cancel_transfer()
+	_start_deal_animation()
+
+
+func _start_deal_animation() -> void:
+	reset_motion()
 	var orbit_controls := get_orbit_controls()
 	if orbit_controls.is_empty():
 		deal_finished.emit()
@@ -241,6 +306,8 @@ func preview_play() -> void:
 func preview_stop() -> void:
 	if not Engine.is_editor_hint():
 		return
+	cancel_transfer()
+	_motion.reset()
 	_force_finish_deal()
 	_force_finish_entrances()
 
@@ -249,7 +316,7 @@ func preview_stop() -> void:
 ## 的子控件（如库存装配逐格挂载）到齐后再计算起播数量、总时长与可见性快照。
 ## 每个生命周期至多一次；关闭开关、编辑器环境或空轨道不触发。
 func _try_auto_play_spawn_deal() -> void:
-	if _deal_spawn_played or not deal_auto_play or Engine.is_editor_hint():
+	if _transfer_gathering or _transfer_pending_deal or _deal_spawn_played or not deal_auto_play or Engine.is_editor_hint():
 		return
 	if not is_inside_tree() or get_orbit_control_count() == 0:
 		return
@@ -262,7 +329,7 @@ func _try_auto_play_spawn_deal() -> void:
 ## 帧末执行的自动发牌：同帧批量加入的子控件此刻已全部在轨道上。
 func _deferred_spawn_deal() -> void:
 	_spawn_deal_deferred = false
-	if _deal_spawn_played or not deal_auto_play or Engine.is_editor_hint():
+	if _transfer_gathering or _transfer_pending_deal or _deal_spawn_played or not deal_auto_play or Engine.is_editor_hint():
 		return
 	if not is_inside_tree() or get_orbit_control_count() == 0:
 		return
@@ -289,7 +356,7 @@ func _sync_child_added_entrances() -> void:
 
 
 func _should_entrance_new_child() -> bool:
-	if not entrance_on_child_added or Engine.is_editor_hint():
+	if _transfer_gathering or _transfer_reparenting or not entrance_on_child_added or Engine.is_editor_hint():
 		return false
 	if deal_auto_play and not _deal_spawn_played:
 		return false
@@ -316,20 +383,28 @@ func get_track_center_global() -> Vector2:
 
 
 func _notification(what: int) -> void:
+	if _transfer_reparenting:
+		return
 	# 子节点增删（子控件加入 / 移除）时立即重排一次，并补挂新控件的尺寸监听，
 	# 暂停自转期间也能保持均匀、响应控件尺寸变化。
 	if what == NOTIFICATION_CHILD_ORDER_CHANGED:
+		_release_departed_children()
 		_ensure_control_resize_listeners()
 		_sync_child_added_entrances()
 		relayout_slots()
 		_try_auto_play_spawn_deal()
 	# 保存场景前终结进行中的发牌与入场，不把动画中间状态（隐藏/驻留环心）写入场景。
 	elif what == NOTIFICATION_EDITOR_PRE_SAVE:
+		cancel_transfer()
+		_motion.reset()
 		_force_finish_deal()
 		_force_finish_entrances()
 
 
 func _exit_tree() -> void:
+	cancel_transfer()
+	_rotary_dragging = false
+	_motion.reset()
 	# 退出树时立即终结进行中的发牌、入场与回正补间，子控件不留隐藏或半飞行状态。
 	_force_finish_deal()
 	_force_finish_entrances()
@@ -340,7 +415,12 @@ func _exit_tree() -> void:
 ## 把当前子控件的 resized 信号接到重排上：控件自身尺寸变化（非增删）时也重新收敛，
 ## 包括暂停自转期间。
 func _ensure_control_resize_listeners() -> void:
-	for control in get_orbit_controls():
+	for previous in _watched_controls:
+		if is_instance_valid(previous) and previous.get_parent() != self:
+			if previous.resized.is_connected(_on_control_resized):
+				previous.resized.disconnect(_on_control_resized)
+	_watched_controls = get_orbit_controls()
+	for control in _watched_controls:
 		if not control.resized.is_connected(_on_control_resized):
 			control.resized.connect(_on_control_resized)
 
@@ -353,6 +433,8 @@ func _on_control_resized() -> void:
 ## 发牌播放期间：未轮到的隐藏驻留环心，轮到的从环心插值飞向**当前**槽位
 ## （槽位随自转/拨盘每帧重算，飞行追着活动目标收敛）。
 func relayout_slots() -> void:
+	if _transfer_reparenting or _transfer_gathering:
+		return
 	var orbit_controls := get_orbit_controls()
 	var slot_count := orbit_controls.size()
 	if slot_count == 0:
@@ -360,9 +442,10 @@ func relayout_slots() -> void:
 	var track_center := size * 0.5
 	for slot_index in slot_count:
 		var control := orbit_controls[slot_index]
-		var angle := slot_start_angle + TAU * float(slot_index) / float(slot_count)
-		var slot_center := track_center + Vector2(cos(angle), sin(angle)) * orbit_radius
+		var angle := orbit_phase + slot_start_angle + TAU * float(slot_index) / float(slot_count)
+		var slot_center := track_center + Vector2(cos(angle), sin(angle)) * orbit_radii
 		# 反向旋转必须绕控件中心，否则不同尺寸控件的实际显示中心会偏离轨道槽位。
+		control.pivot_offset_ratio = Vector2.ZERO
 		control.pivot_offset = control.size * 0.5
 		control.rotation = -rotation
 		if _entrance_elapsed_for(control) >= 0.0:
@@ -370,7 +453,8 @@ func relayout_slots() -> void:
 		elif _deal_playing:
 			_write_deal_position(control, slot_index, track_center, slot_center)
 		else:
-			control.position = slot_center - control.size * 0.5
+			control.position = slot_center - control.size * 0.5 + _motion.get_offset(control)
+			control.rotation += _motion.get_rotation(control)
 
 
 ## 发牌中单个子控件的位置与可见性：未轮到的隐藏驻留环心；轮到的恢复显示
@@ -398,14 +482,14 @@ func _deal_progress_for(slot_index: int) -> float:
 	var launch_offset := 0.0
 	if deal_launch_mode == DealLaunchMode.STAGGERED:
 		launch_offset = deal_stagger_seconds * float(slot_index)
-	return (_deal_clock - launch_offset) / deal_duration_seconds
+	return (_deal_clock - launch_offset) / maxf(deal_duration_seconds, 0.00001)
 
 
 ## 入场飞行中单个子控件的位置：从环心按进度插值飞向当前槽位（槽位随自转/拨盘
 ## 每帧重算）；入场不改变可见性（隐藏控件不发起入场）。
 func _write_entrance_position(control: Control, track_center: Vector2,
 		slot_center: Vector2) -> void:
-	var progress := _entrance_elapsed_for(control) / deal_duration_seconds
+	var progress := _entrance_elapsed_for(control) / maxf(deal_duration_seconds, 0.00001)
 	if progress >= 1.0:
 		control.position = slot_center - control.size * 0.5
 		return
@@ -428,9 +512,11 @@ func _advance_entrance_flights(delta: float) -> void:
 		return
 	var surviving: Array = []
 	for flight in _entrance_flights:
-		var control: Control = flight[0]
-		if not is_instance_valid(control) or control.get_parent() != self:
+		# 先对 Variant 做有效性判定：typed 赋值为 Control 时，已释放实例会直接报错。
+		var raw_flight_ref = flight[0]
+		if not is_instance_valid(raw_flight_ref) or raw_flight_ref.get_parent() != self:
 			continue
+		var control: Control = raw_flight_ref
 		var elapsed: float = flight[1] + delta
 		if elapsed < deal_duration_seconds:
 			surviving.append([control, elapsed])
@@ -449,6 +535,9 @@ func _force_finish_entrances() -> void:
 
 
 func _finish_deal() -> void:
+	var transfer_done := _transfer_pending_deal
+	var generation := _transfer_generation
+	_transfer_pending_deal = false
 	_deal_playing = false
 	# 强制收尾（预览停止/退出树）时部分子控件可能尚未轮到起播，仍处隐藏态；
 	# 统一按起播快照恢复可见性后再清空，正常播完时此循环是幂等的。
@@ -458,6 +547,18 @@ func _finish_deal() -> void:
 	relayout_slots()
 	_sync_processing()
 	deal_finished.emit()
+	if transfer_done and generation == _transfer_generation:
+		transfer_finished.emit()
+
+
+## 理想槽位中心（轨道局部坐标），由椭圆半径、相位与槽位序号计算。
+func get_slot_center(slot_index: int, slot_count: int = -1) -> Vector2:
+	if slot_count < 0:
+		slot_count = get_orbit_control_count()
+	if slot_count <= 0:
+		return size * 0.5
+	var angle := orbit_phase + slot_start_angle + TAU * float(slot_index) / float(slot_count)
+	return size * 0.5 + Vector2(cos(angle), sin(angle)) * orbit_radii
 
 
 ## 当前直接 Control 子节点，按场景树顺序返回。排除已 queue_free 等待释放的节点：
@@ -484,6 +585,7 @@ func set_orbit_spinning(spinning: bool) -> void:
 
 
 func _on_resized() -> void:
+	pivot_offset_ratio = Vector2.ZERO
 	pivot_offset = size * 0.5
 	relayout_slots()
 
@@ -496,7 +598,7 @@ func _canvas_position(viewport_position: Vector2) -> Vector2:
 func _begin_rotary_drag(pointer_angle: float) -> void:
 	_kill_snap_back_tween()
 	_rotary_dragging = true
-	_rotary_rest_rotation = rotation
+	_rotary_rest_phase = orbit_phase
 	_rotary_pointer_angle = pointer_angle
 	_sync_processing()
 
@@ -510,7 +612,7 @@ func _end_rotary_drag() -> void:
 ## 拨动期间把指针绕环心的角增量累积到轨道旋转上：跟随指针、支持多圈。
 func _track_rotary_pointer(pointer_canvas_position: Vector2) -> void:
 	var pointer_angle := (pointer_canvas_position - get_track_center_global()).angle()
-	rotation += angle_difference(_rotary_pointer_angle, pointer_angle)
+	orbit_phase += angle_difference(_rotary_pointer_angle, pointer_angle)
 	_rotary_pointer_angle = pointer_angle
 
 
@@ -519,9 +621,9 @@ func _track_rotary_pointer(pointer_canvas_position: Vector2) -> void:
 func _start_snap_back_if_needed() -> void:
 	if not snap_back_on_release:
 		return
-	var angle_distance := absf(_rotary_rest_rotation - rotation)
+	var angle_distance := absf(_rotary_rest_phase - orbit_phase)
 	if snap_back_duration_seconds <= 0.0:
-		rotation = _rotary_rest_rotation
+		orbit_phase = _rotary_rest_phase
 		relayout_slots()
 		return
 	if angle_distance < deg_to_rad(snap_back_dead_zone_degrees):
@@ -531,7 +633,7 @@ func _start_snap_back_if_needed() -> void:
 		tween_time = snap_back_duration_seconds * angle_distance / PI
 	_snap_back_tween = create_tween()
 	_snap_back_tween.finished.connect(_on_snap_back_finished)
-	_snap_back_tween.tween_property(self, "rotation", _rotary_rest_rotation, tween_time)
+	_snap_back_tween.tween_property(self, "orbit_phase", _rotary_rest_phase, tween_time)
 
 
 func _is_snapping_back() -> bool:
@@ -540,6 +642,7 @@ func _is_snapping_back() -> bool:
 
 func _on_snap_back_finished() -> void:
 	_snap_back_tween = null
+	relayout_slots()
 	_sync_processing()
 
 
@@ -560,7 +663,247 @@ func _cancel_rotary_interaction() -> void:
 ## 仅发牌预览与入场需要帧循环。
 func _sync_processing() -> void:
 	if Engine.is_editor_hint():
-		set_process(_deal_playing or not _entrance_flights.is_empty())
+		set_process(_transfer_gathering or _deal_playing or not _entrance_flights.is_empty())
 		return
-	set_process(auto_spin or _rotary_dragging or _is_snapping_back() \
+	set_process(_transfer_gathering or spring_enabled or motion_lean_enabled or auto_spin or _rotary_dragging or _is_snapping_back() \
 		or _deal_playing or not _entrance_flights.is_empty())
+
+
+## 清除速度导数/弹簧/倾斜历史，立即回到理想位置。用于传送、重新绑定与手动复位。
+func reset_motion() -> void:
+	_motion.reset()
+	if is_inside_tree():
+		relayout_slots()
+		_sync_processing()
+
+
+func _advance_motion(delta: float) -> void:
+	if _deal_playing or _transfer_gathering:
+		_motion.reset()
+		return
+	if Engine.is_editor_hint() or not (spring_enabled or motion_lean_enabled):
+		return
+	_motion.step(self, get_orbit_controls(), delta)
+
+
+## 采用同一 Viewport 内的 Controls。先对全批截取屏幕姿态，再逐个移出 Grid。
+## 动画顺序为「全批汇聚 → 一轮发牌」；false 立即采用最终排布，跨 Viewport 批次校验失败时保持场景。
+## 临时 Node2D 承载动画仿射变换，可精确保留旋转与非均匀缩放产生的剪切；操作结束时释放。
+func transfer_controls(controls: Array, animated := true) -> bool:
+	if not is_inside_tree() or is_queued_for_deletion():
+		return false
+	var incoming: Array[Control] = []
+	for item in controls:
+		if not is_instance_valid(item) or not item is Control:
+			continue
+		var control: Control = item
+		if control == self or control.is_ancestor_of(self) or not control.is_inside_tree() \
+				or control.is_queued_for_deletion() or control.get_viewport() != get_viewport():
+			push_warning("OrbitTrack transfer: requires live Controls in the same Viewport, without ancestor cycles.")
+			return false
+		if not incoming.has(control): incoming.append(control)
+	if incoming.is_empty():
+		return true
+	var canvas_transform := get_global_transform_with_canvas()
+	if absf(canvas_transform.determinant()) < 0.000001:
+		push_warning("OrbitTrack transfer: destination transform is singular.")
+		return false
+	var all_controls := get_transfer_controls()
+	for control in incoming:
+		if not all_controls.has(control): all_controls.append(control)
+	var snapshots: Array[Dictionary] = []
+	# This loop MUST finish before any reparent/cancel can trigger Container reflow.
+	for control in all_controls:
+		snapshots.append({"control": control, "screen": control.get_global_transform_with_canvas(),
+			"size": control.size, "scale": _transfer_original_scale(control),
+			"visible": _logical_visibility(control)})
+	cancel_transfer()
+	_cancel_deal_without_signal()
+	_force_finish_entrances()
+	_cancel_rotary_interaction()
+	_motion.reset()
+	_deal_spawn_played = true
+	_spawn_deal_deferred = false
+	_transfer_generation += 1
+	_transfer_clock = 0.0
+	_transfer_reparenting = true
+	for snapshot in snapshots:
+		var control: Control = snapshot.control
+		var old_parent := control.get_parent()
+		if old_parent is OrbitTrack:
+			old_parent._release_for_transfer(control)
+		if control.resized.is_connected(_on_control_resized):
+			control.resized.disconnect(_on_control_resized)
+		if animated and transfer_duration_seconds > 0.0:
+			var carrier := Node2D.new()
+			carrier.name = "_OrbitTransfer_%d" % control.get_instance_id()
+			add_child(carrier)
+			control.reparent(carrier, false)
+			control.set_as_top_level(false)
+			control.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			control.pivot_offset_ratio = Vector2.ZERO
+			control.pivot_offset = Vector2.ZERO
+			control.rotation = 0.0
+			control.scale = Vector2.ONE
+			control.size = snapshot.size
+			control.position = Vector2.ZERO
+			carrier.transform = canvas_transform.affine_inverse() * Transform2D(snapshot.screen)
+			snapshot.carrier = carrier
+			_transfer_records.append(snapshot)
+		else:
+			control.reparent(self, false)
+			control.set_as_top_level(false)
+			control.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			control.size = snapshot.size
+			control.scale = snapshot.scale
+		control.visible = snapshot.visible
+	_transfer_reparenting = false
+	_transfer_gathering = not _transfer_records.is_empty()
+	_remember_current_children()
+	_ensure_control_resize_listeners()
+	if not _transfer_gathering:
+		relayout_slots()
+		transfer_finished.emit()
+	_sync_processing()
+	return true
+
+
+## 返回归本轨道及汇聚载体持有的控件，供再次切换等调用复用。
+func get_transfer_controls() -> Array[Control]:
+	var result := get_orbit_controls()
+	for record in _transfer_records:
+		if _owns_transfer_record(record) and not result.has(record.control):
+			result.append(record.control)
+	return result
+
+
+func is_transfer_playing() -> bool:
+	return _transfer_gathering or _transfer_pending_deal
+
+
+## 静默取消当前切换并采用仍归本轨道所有的控件，恢复可见性与槽位；普通发牌由其自身生命周期完成。
+func cancel_transfer() -> void:
+	var cancel_deal := is_transfer_playing()
+	_transfer_generation += 1
+	_transfer_pending_deal = false
+	_transfer_gathering = false
+	if not _transfer_records.is_empty():
+		_adopt_transfer_records()
+	if cancel_deal:
+		_cancel_deal_without_signal()
+	_motion.reset()
+	if is_inside_tree():
+		relayout_slots()
+		_sync_processing()
+
+
+func _advance_transfer(delta: float) -> void:
+	_transfer_clock += delta
+	var progress := clampf(_transfer_clock / maxf(transfer_duration_seconds, 0.00001), 0.0, 1.0)
+	var eased := progress * progress * (3.0 - 2.0 * progress)
+	var destination_canvas := get_global_transform_with_canvas()
+	if absf(destination_canvas.determinant()) < 0.000001:
+		cancel_transfer()
+		return
+	for record in _transfer_records:
+		if not _owns_transfer_record(record): continue
+		var carrier: Node2D = record.carrier
+		var target := Transform2D(-rotation, Vector2(record.scale), 0.0, Vector2.ZERO)
+		target.origin = size * 0.5 - target.basis_xform(Vector2(record.size) * 0.5)
+		var start_local: Transform2D = destination_canvas.affine_inverse() * Transform2D(record.screen)
+		carrier.transform = start_local.interpolate_with(target, eased)
+	if progress < 1.0: return
+	var generation := _transfer_generation
+	_transfer_gathering = false
+	_adopt_transfer_records()
+	# Everybody is at the center before callbacks or any deal movement.
+	for control in get_orbit_controls():
+		control.pivot_offset_ratio = Vector2.ZERO
+		control.pivot_offset = control.size * 0.5
+		control.rotation = -rotation
+		control.position = size * 0.5 - control.size * 0.5
+	transfer_gathered.emit()
+	if generation != _transfer_generation or not is_inside_tree(): return
+	_transfer_pending_deal = true
+	_start_deal_animation()
+	if generation != _transfer_generation or not is_inside_tree(): return
+	if get_orbit_control_count() == 0:
+		_transfer_pending_deal = false
+		transfer_finished.emit()
+
+
+func _owns_transfer_record(record: Dictionary) -> bool:
+	return is_instance_valid(record.get("control")) and is_instance_valid(record.get("carrier")) \
+		and record.control.get_parent() == record.carrier and not record.control.is_queued_for_deletion()
+
+
+func _adopt_transfer_records() -> void:
+	_transfer_reparenting = true
+	for record in _transfer_records:
+		if _owns_transfer_record(record):
+			var control: Control = record.control
+			control.reparent(self, false)
+			control.set_as_top_level(false)
+			control.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			control.size = record.size
+			control.scale = record.scale
+			control.visible = record.visible
+		if is_instance_valid(record.get("carrier")):
+			record.carrier.queue_free()
+	_transfer_records.clear()
+	_transfer_reparenting = false
+	_remember_current_children()
+	_ensure_control_resize_listeners()
+
+
+func _logical_visibility(control: Control) -> bool:
+	if _deal_visibility_snapshot.has(control): return _deal_visibility_snapshot[control]
+	for record in _transfer_records:
+		if record.control == control: return record.visible
+	var source := _transfer_owner_of(control)
+	if source != null and source != self: return source._logical_visibility(control)
+	return control.visible
+
+
+func _transfer_original_scale(control: Control) -> Vector2:
+	for record in _transfer_records:
+		if record.control == control: return record.scale
+	var source := _transfer_owner_of(control)
+	if source != null and source != self: return source._transfer_original_scale(control)
+	return control.scale
+
+
+func _transfer_owner_of(control: Control) -> OrbitTrack:
+	var parent := control.get_parent()
+	if parent is OrbitTrack: return parent
+	if parent is Node2D and parent.get_parent() is OrbitTrack:
+		var possible: OrbitTrack = parent.get_parent()
+		for record in possible._transfer_records:
+			if record.control == control and possible._owns_transfer_record(record): return possible
+	return null
+
+
+func _cancel_deal_without_signal() -> void:
+	_deal_playing = false
+	for control in _deal_visibility_snapshot:
+		if is_instance_valid(control) and control.get_parent() == self:
+			control.visible = _deal_visibility_snapshot[control]
+	_deal_visibility_snapshot.clear()
+	_entrance_flights.clear()
+
+
+func _release_for_transfer(control: Control) -> void:
+	if _deal_visibility_snapshot.has(control):
+		control.visible = _deal_visibility_snapshot[control]
+		_deal_visibility_snapshot.erase(control)
+	_motion.forget(control)
+	if control.resized.is_connected(_on_control_resized):
+		control.resized.disconnect(_on_control_resized)
+
+
+func _release_departed_children() -> void:
+	for control in _deal_visibility_snapshot.keys():
+		if not is_instance_valid(control):
+			_deal_visibility_snapshot.erase(control)
+		elif control.get_parent() != self:
+			_release_for_transfer(control)

@@ -9,9 +9,9 @@
 [ext_resource type="Shader" uid="uid://biv3ostb7v7cy" path="res://addons/gdbase/ui/quick_node/texture_mask/texture_mask.gdshader" id="6_6jyxj"]
 [ext_resource type="Texture2D" uid="uid://xc8f1catjpn3" path="res://assets/UIBorder/Panel/panel-024.png" id="6_261ed"]
 [ext_resource type="Script" uid="uid://ct6sidajifh87" path="res://addons/gdbase/inventory/core/item/item_instance_data.gd" id="6_mswor"]
-[ext_resource type="Script" uid="uid://bspod15i3t1i2" path="res://addons/gdbase/inventory/core/model/shape_inventory_occupy_map.gd" id="7_261ed"]
+[ext_resource type="Script" uid="uid://bspod15i3t1i2" path="res://addons/gdbase/inventory/parts/shape/runtime/shape_inventory_occupy_map.gd" id="7_261ed"]
 [ext_resource type="Texture2D" uid="uid://dx1jsprnne058" path="res://addons/gdbase/ui/quick_node/texture_mask/patterns/squares.png" id="7_u1kaa"]
-[ext_resource type="Script" uid="uid://bppensn1vi4a7" path="res://addons/gdbase/inventory/core/model/inventory_data.gd" id="8_h6uki"]
+[ext_resource type="Script" uid="uid://bppensn1vi4a7" path="res://addons/gdbase/inventory/core/inventory/inventory_data.gd" id="8_h6uki"]
 [ext_resource type="Script" uid="uid://difslqnqtqevy" path="res://addons/gdbase/ui/quick_node/quick_mask.gd" id="8_n81x3"]
 [ext_resource type="Resource" uid="uid://bwfpi306rm5i1" path="res://addons/gdbase/inventory/presets/host/grid_inventory_host.tres" id="9_m0pwt"]
 [ext_resource type="Script" uid="uid://o0w70tug0ugw" path="res://addons/gdbase/inventory/ui/grid/inventory_grid_panel.gd" id="10_6jyxj"]
@@ -294,10 +294,9 @@ script = ExtResource("11_u1kaa")
 inventory_grid_panel = NodePath("../InventoryGridPanel")
 inventory_data = SubResource("Resource_t6svt")
 
-[node name="InventoryItemsInputController" type="Node" parent="Panel/NinePatchRect/VBoxContainer/InventoryHost" unique_id=984445201 node_paths=PackedStringArray("inventory_grid_panel")]
+[node name="InventoryItemsInputController" type="Node" parent="Panel/NinePatchRect/VBoxContainer/InventoryHost" unique_id=984445201]
 script = ExtResource("12_n81x3")
 inventory_data = SubResource("Resource_t6svt")
-inventory_grid_panel = NodePath("../InventoryGridPanel")
 input_processing_enabled = false
 
 [node name="Panel" type="Panel" parent="Panel" unique_id=462231567]

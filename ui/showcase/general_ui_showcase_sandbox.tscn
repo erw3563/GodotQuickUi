@@ -1,25 +1,18 @@
 [gd_scene format=3 uid="uid://c87aoerx83msd"]
 
-[ext_resource type="PackedScene" uid="uid://ben5ww1unwftq" path="res://addons/gdbase/ui/layout_node/showcase/pages/page_orbit_track.tscn" id="1_orbit_track"]
-[ext_resource type="PackedScene" uid="uid://dvw085731cvy3" path="res://addons/gdbase/ui/layout_node/showcase/pages/page_orbit_dial.tscn" id="2_orbit_dial"]
-[ext_resource type="PackedScene" path="res://addons/gdbase/ui/layout_node/showcase/pages/page_deal_box.tscn" id="3_deal_box"]
-[ext_resource type="PackedScene" uid="uid://d0lss8is6fdtv" path="res://addons/gdbase/ui/panel_node/showcase/pages/page_zoom_panel.tscn" id="4_zoom_panel"]
-[ext_resource type="PackedScene" uid="uid://cwwddhungoom5" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_drag.tscn" id="5_quick_drag"]
-[ext_resource type="PackedScene" uid="uid://bxmc6o2bwd77i" path="res://addons/gdbase/ui/quick_node/showcase/pages/page_quick_mask.tscn" id="6_quick_mask"]
+[ext_resource type="PackedScene" uid="uid://ben5ww1unwftq" path="res://addons/gdbase/ui/showcase/layout_node/pages/page_orbit_track.tscn" id="1_orbit_track"]
+[ext_resource type="PackedScene" path="res://addons/gdbase/ui/showcase/layout_node/pages/page_deal_box.tscn" id="3_deal_box"]
+[ext_resource type="PackedScene" uid="uid://d0lss8is6fdtv" path="res://addons/gdbase/ui/showcase/panel_node/pages/page_zoom_panel.tscn" id="4_zoom_panel"]
+[ext_resource type="PackedScene" uid="uid://cwwddhungoom5" path="res://addons/gdbase/ui/showcase/quick_node/pages/page_quick_drag.tscn" id="5_quick_drag"]
+[ext_resource type="PackedScene" uid="uid://bxmc6o2bwd77i" path="res://addons/gdbase/ui/showcase/quick_node/pages/page_quick_mask.tscn" id="6_quick_mask"]
 [ext_resource type="PackedScene" uid="uid://2shgl8anuhls" path="res://addons/gdbase/showcase/knob_showcase_sandbox.tscn" id="base"]
 [ext_resource type="Script" uid="uid://qx48fv8fixnk" path="res://addons/gdbase/showcase/showcase_entry.gd" id="entry"]
 
 [sub_resource type="Resource" id="Entry_orbit_track"]
 script = ExtResource("entry")
 id = &"orbit_track"
-title = "环形排列"
+title = "环形排列与拨盘"
 scene = ExtResource("1_orbit_track")
-
-[sub_resource type="Resource" id="Entry_orbit_dial"]
-script = ExtResource("entry")
-id = &"orbit_dial"
-title = "拨盘拖动"
-scene = ExtResource("2_orbit_dial")
 
 [sub_resource type="Resource" id="Entry_deal_box"]
 script = ExtResource("entry")
@@ -47,7 +40,7 @@ scene = ExtResource("6_quick_mask")
 
 [node name="GeneralUiShowcaseSandbox" unique_id=91779225 instance=ExtResource("base")]
 title = "通用 UI 组件演示台"
-entries = Array[ExtResource("entry")]([SubResource("Entry_orbit_track"), SubResource("Entry_orbit_dial"), SubResource("Entry_deal_box"), SubResource("Entry_zoom_panel"), SubResource("Entry_quick_drag"), SubResource("Entry_quick_mask")])
+entries = Array[ExtResource("entry")]([SubResource("Entry_orbit_track"), SubResource("Entry_deal_box"), SubResource("Entry_zoom_panel"), SubResource("Entry_quick_drag"), SubResource("Entry_quick_mask")])
 
 [node name="KnobDrawer" parent="." index="1" unique_id=1973564250]
 anchors_preset = 3
@@ -55,16 +48,6 @@ anchor_left = 1.0
 offset_left = -343.0
 grow_horizontal = 0
 stretch_along_edge = false
-
-[node name="Hint" parent="KnobDrawer/KnobStage" parent_id_path=PackedInt32Array(2074652033) index="0" unique_id=575866056]
-anchors_preset = 10
-anchor_left = 0.0
-anchor_right = 1.0
-offset_left = 0.0
-offset_top = 0.0
-offset_right = 0.0
-offset_bottom = 18.0
-text = "旋钮"
 
 [node name="ButtonZoomIn" parent="IntroLayer/Performances/ButtonReveal/Reveal" parent_id_path=PackedInt32Array(1582930467) index="1" unique_id=1930466752]
 animation_duration = 0.07

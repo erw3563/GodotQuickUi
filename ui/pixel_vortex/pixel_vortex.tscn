@@ -1,0 +1,19 @@
+[gd_scene format=3 uid="uid://c201hjsiatktw"]
+
+[ext_resource type="Script" uid="uid://nw7mj58x2jwr" path="res://addons/gdbase/ui/pixel_vortex/pixel_vortex.gd" id="1_q4kuk"]
+[ext_resource type="Material" uid="uid://buvaw6vkc40i4" path="res://addons/gdbase/ui/pixel_vortex/pixel_vortex_material.tres" id="2_oajar"]
+
+[node name="PixelVortex" type="Control" unique_id=2025102760]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 96.0
+offset_bottom = 96.0
+mouse_filter = 2
+script = ExtResource("1_q4kuk")
+
+[node name="Surface" type="ColorRect" parent="." unique_id=190866794]
+material = ExtResource("2_oajar")
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2

@@ -1,143 +1,226 @@
+@tool
 class_name QuickDrag
-extends Node
-## 使 [Control] 可被鼠标拖拽；支持自由、仅水平、仅竖直，并在后两种模式下可选限制在以「本次按下时控件 position」为基准的线段上。
-
-signal drag_down(vec:Vector2)
-
-enum DragMode {
-	FREE,
-	HORIZONTAL_ONLY,
-	VERTICAL_ONLY,
-}
-
-## 被拖拽的控件；留空则当父节点为 [Control] 时将其作为目标。
+extends QuickUiAbility
+## 拖动能力：支持宿主管理与独立装配，维护鼠标及触摸捕获并提交位置提议。
+signal drag_down(vec: Vector2)
+signal drag_started
+signal drag_finished(cancelled: bool)
+enum DragMode { FREE, HORIZONTAL_ONLY, VERTICAL_ONLY }
 @export var dragged_ui: Control
-## 能够被鼠标点击以开始拖动的 Control 节点
-@export var clickable_ui:Control
-## 位置落笔中介（鸭子契约：实现 place(control, proposed, intent) 的节点，QuickUiAnimHost 即是）；
-## 拖拽落笔以 INTERACTIVE 意图经其裁决加工，可打断演出租约。留空则直写（散装）。
+@export var clickable_ui: Control
 @export var placer: Node
-## 拖拽模式：自由、仅水平轴线段、仅竖直轴线段。
 @export var drag_mode: DragMode = DragMode.FREE
-## 是否自动接管 clickable_ui 的左键按压以开始拖拽；关闭后需自行调用 [method begin_drag]
-@export var auto_to_process_click:bool = true
-## 在仅水平 / 仅竖直模式下，是否将位移限制在对应轴上；区间相对本次拖拽开始时的控件 [member Control.position]（父节点本地空间）。
-@export var use_axis_range_limit: bool = false
-## 水平模式：相对拖拽起始 X 的偏移下限（可为负，例如 -50 表示最多向左 50px）。
-@export var horizontal_range_min_offset: float = 0.0
-## 水平模式：相对拖拽起始 X 的偏移上限（例如 120 表示最多向右 120px）。
-@export var horizontal_range_max_offset: float = 0.0
-## 竖直模式：相对拖拽起始 Y 的偏移下限。
-@export var vertical_range_min_offset: float = 0.0
-## 竖直模式：相对拖拽起始 Y 的偏移上限。
-@export var vertical_range_max_offset: float = 0.0
+@export var auto_to_process_click := true
+@export var use_axis_range_limit := false
+@export var horizontal_range_min_offset := 0.0
+@export var horizontal_range_max_offset := 0.0
+@export var vertical_range_min_offset := 0.0
+@export var vertical_range_max_offset := 0.0
 @export_group("reset")
-@export var is_reset_horizontal_max:bool = true
-@export var is_reset_horizontal_min:bool = true
-@export var is_reset_vertical_max:bool = true
-@export var is_reset_vertical_min:bool = true
-## 按下时鼠标与控件原点（全局）的偏移，用于保持抓取点不跳动。
-var _grab_pos_offset: Vector2
-## 开始拖拽时控件的位置
-var _grab_start_pos:Vector2
-## 拖拽上限
-var horizontal_range_min:float
-## 拖拽下限
-var horizontal_range_max:float
-## 拖拽左限
-var vertical_range_min:float
-## 拖拽右限
-var vertical_range_max:float
-## 是否正在拖拽
-var is_draging:bool
+@export var is_reset_horizontal_max := true
+@export var is_reset_horizontal_min := true
+@export var is_reset_vertical_max := true
+@export var is_reset_vertical_min := true
+var horizontal_range_min := 0.0
+var horizontal_range_max := 0.0
+var vertical_range_min := 0.0
+var vertical_range_max := 0.0
+var is_draging := false
+var _grab_pos_offset := Vector2.ZERO
+var _grab_start_pos := Vector2.ZERO
+var _grab_start_layout := Vector2.ZERO
+var _proposal := Vector2.INF
+var _pointer := -2 # -2 none; -1 mouse; >=0 touch index
+var _click: Control
+var _drag_target: Control
+var _drag_parent: Node
+
+func _init() -> void:
+	proposal_priority = 100
 
 func _ready() -> void:
-	if dragged_ui == null:
-		push_error("QuickDrag: 未设置 dragged_ui 无法拖拽。")
-		return
-	if auto_to_process_click and clickable_ui != null:
-		clickable_ui.gui_input.connect(_on_clickable_gui_input)
 	set_process_input(false)
-	if use_axis_range_limit:
-		await _reset_range()
+	if not Engine.is_editor_hint() and not get_parent() is QuickUiAbilityHost:
+		_refresh_click()
 
-## 按开关重采样轴向范围：等布局稳定后基于控件当前位置。
-func _reset_range():
-	await QuickUI.layout_settled(self)
-	if is_reset_horizontal_max:
-		horizontal_range_max = dragged_ui.global_position.x + horizontal_range_max_offset
-	if is_reset_horizontal_min:
-		horizontal_range_min = dragged_ui.global_position.x - horizontal_range_min_offset
-	if is_reset_vertical_max:
-		vertical_range_max = dragged_ui.global_position.y + vertical_range_max_offset
-	if is_reset_vertical_min:
-		vertical_range_min = dragged_ui.global_position.y - vertical_range_min_offset
+func _exit_tree() -> void:
+	cancel_drag()
+	_disconnect_click()
+	super._exit_tree()
 
-func _move_range(vec:Vector2):
-	await get_tree().process_frame
-	horizontal_range_max += vec.x
-	horizontal_range_min += vec.x
-	vertical_range_max += vec.y
-	vertical_range_min += vec.y
+func _on_enabled_changed() -> void:
+	if not enabled:
+		cancel_drag()
+		_disconnect_click()
 
-## clickable_ui 的 gui_input 回调：事件未被上层控件遮挡时才会到达。
-func _on_clickable_gui_input(event: InputEvent) -> void:
-	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
-		clickable_ui.accept_event()
-		begin_drag(clickable_ui.get_global_transform() * event.position)
+func host_attach(host: Node, target: Control) -> void:
+	super.host_attach(host, target)
+	_refresh_click()
 
-## 开始拖拽：记录抓取偏移与起点。press_global 留空时回退真实鼠标位置
-## （auto_to_process_click 关闭、手动调用时的路径）。
-func begin_drag(press_global := Vector2.INF) -> void:
-	if dragged_ui == null or is_draging:
+func host_detach() -> void:
+	cancel_drag()
+	_disconnect_click()
+	super.host_detach()
+
+func _target_ui() -> Control:
+	if is_instance_valid(ability_host):
+		return ability_target
+	if get_parent() is QuickUiAbilityHost:
+		return null # 托管目标由已挂载的宿主提供。
+	if is_instance_valid(dragged_ui):
+		return dragged_ui
+	return get_parent() as Control
+
+func _can_interact() -> bool:
+	if not enabled or not is_inside_tree() or not can_process() or Engine.is_editor_hint():
+		return false
+	var target := _target_ui()
+	if not is_instance_valid(target) or not target.is_inside_tree() or not target.is_visible_in_tree() or target.get_parent() is Container:
+		return false
+	if is_instance_valid(ability_host) and not ability_host._invalid_reason().is_empty():
+		return false
+	return true
+
+func _refresh_click() -> void:
+	var wanted: Control = null
+	if _can_interact() and auto_to_process_click:
+		wanted = clickable_ui if is_instance_valid(clickable_ui) else _target_ui()
+	if wanted == _click:
 		return
-	var mouse_global := press_global
-	if mouse_global == Vector2.INF:
-		mouse_global = dragged_ui.get_global_mouse_position()
-	_grab_pos_offset = dragged_ui.global_position - mouse_global
-	_grab_start_pos = dragged_ui.global_position
+	cancel_drag()
+	_disconnect_click()
+	_click = wanted
+	if is_instance_valid(_click):
+		_click.gui_input.connect(_on_clickable_gui_input)
+
+func _disconnect_click() -> void:
+	if is_instance_valid(_click) and _click.gui_input.is_connected(_on_clickable_gui_input):
+		_click.gui_input.disconnect(_on_clickable_gui_input)
+	_click = null
+
+func _process(_delta: float) -> void:
+	if Engine.is_editor_hint() or get_parent() is QuickUiAbilityHost:
+		return
+	_refresh_click()
+	_validate_capture()
+
+func host_step(_delta: float) -> void:
+	_refresh_click()
+	_validate_capture()
+
+func _validate_capture() -> void:
+	if is_draging and (not _can_interact() or not is_instance_valid(_drag_target) or _drag_target != _target_ui() or _drag_target.get_parent() != _drag_parent):
+		cancel_drag()
+
+func _on_clickable_gui_input(event: InputEvent) -> void:
+	if not _can_interact() or is_draging:
+		return
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+		begin_drag(_target_ui().get_canvas_transform().affine_inverse() * _click.get_global_transform_with_canvas() * event.position)
+	elif event is InputEventScreenTouch and event.pressed:
+		begin_drag(_target_ui().get_canvas_transform().affine_inverse() * _click.get_global_transform_with_canvas() * event.position, event.index)
+	if is_draging and is_instance_valid(_click):
+		_click.accept_event()
+
+func begin_drag(press_global := Vector2.INF, pointer_index := -1) -> void:
+	if is_draging or not _can_interact():
+		return
+	if is_instance_valid(ability_host) and not ability_host.can_begin_drag(self):
+		return
+	_drag_target = _target_ui()
+	_drag_parent = _drag_target.get_parent()
+	var point := press_global
+	if point == Vector2.INF:
+		point = _drag_target.get_global_mouse_position()
+	if not point.is_finite():
+		return
+	_grab_start_layout = _drag_target.position
+	_grab_start_pos = QuickUI.layout_to_global(_drag_target, _drag_target.position)
+	_grab_pos_offset = _grab_start_pos - point
+	_proposal = _grab_start_pos
+	_pointer = pointer_index
+	_reset_range()
 	is_draging = true
 	set_process_input(true)
+	drag_started.emit()
 
-## 拖拽期间监听全局鼠标：移动事件跟手更新位置，左键释放（含控件外）结束拖拽。
+func _reset_range() -> void:
+	var target := _target_ui()
+	if not is_instance_valid(target):
+		return
+	if is_reset_horizontal_min: horizontal_range_min = target.position.x + horizontal_range_min_offset
+	if is_reset_horizontal_max: horizontal_range_max = target.position.x + horizontal_range_max_offset
+	if is_reset_vertical_min: vertical_range_min = target.position.y + vertical_range_min_offset
+	if is_reset_vertical_max: vertical_range_max = target.position.y + vertical_range_max_offset
+
 func _input(event: InputEvent) -> void:
-	if is_draging and event is InputEventMouseButton \
-			and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
-		get_viewport().set_input_as_handled()
-		_end_drag()
-	elif is_draging and event is InputEventMouseMotion:
-		var new_pos: Vector2 = dragged_ui.get_canvas_transform().affine_inverse() * event.position
-		new_pos += _grab_pos_offset
-		# 先按自身模式约束（提议），再经中介以交互意图裁决加工后落笔。
-		_place_proposed(_apply_drag_constraints(new_pos))
+	_validate_capture()
+	if not is_draging:
+		return
+	var owned_event: bool = (_pointer == -1 and ((event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT) or event is InputEventMouseMotion)) or (_pointer >= 0 and ((event is InputEventScreenTouch or event is InputEventScreenDrag) and event.index == _pointer))
+	if owned_event: get_viewport().set_input_as_handled()
+	if _pointer == -1:
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed:
+			_end_drag()
+		elif event is InputEventMouseMotion:
+			if not event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+				cancel_drag()
+			else:
+				_move_pointer(event.position)
+	elif event is InputEventScreenTouch and event.index == _pointer and not event.pressed:
+		_end_drag(event.canceled)
+	elif event is InputEventScreenDrag and event.index == _pointer:
+		_move_pointer(event.position)
 
-## 结束拖拽：停止释放/移动监听，发出位移信号。
-func _end_drag() -> void:
-	is_draging = false
-	set_process_input(false)
-	drag_down.emit(dragged_ui.global_position - _grab_start_pos)
+func _move_pointer(viewport_position: Vector2) -> void:
+	var canvas_position := _drag_target.get_canvas_transform().affine_inverse() * viewport_position
+	_proposal = _apply_drag_constraints(canvas_position + _grab_pos_offset)
+	_place_proposed(_proposal)
 
-## 拖拽落笔：经中介以交互意图加工（无中介时直写，语义等价于空管道）。
+func propose_position(_delta: float) -> Vector2:
+	return _proposal if is_draging else Vector2.INF
+
+func _apply_drag_constraints(global_position: Vector2) -> Vector2:
+	var target := _target_ui()
+	if not is_instance_valid(target): return global_position
+	var result := QuickUI.global_to_layout(target, global_position)
+	if drag_mode == DragMode.HORIZONTAL_ONLY: result.y = _grab_start_layout.y
+	if drag_mode == DragMode.VERTICAL_ONLY: result.x = _grab_start_layout.x
+	if use_axis_range_limit:
+		if drag_mode != DragMode.VERTICAL_ONLY:
+			result.x = clampf(result.x, minf(horizontal_range_min, horizontal_range_max), maxf(horizontal_range_min, horizontal_range_max))
+		if drag_mode != DragMode.HORIZONTAL_ONLY:
+			result.y = clampf(result.y, minf(vertical_range_min, vertical_range_max), maxf(vertical_range_min, vertical_range_max))
+	return QuickUI.layout_to_global(target, result)
+
 func _place_proposed(proposed: Vector2) -> void:
-	if placer != null and placer.has_method("place"):
-		placer.place(dragged_ui, proposed, QuickUI.PlaceIntent.INTERACTIVE)
+	var target := _target_ui()
+	if not is_instance_valid(target) or not _can_interact(): return
+	if is_instance_valid(ability_host):
+		ability_host.place(target, proposed, QuickUI.PlaceIntent.INTERACTIVE)
+	elif is_instance_valid(placer) and placer.has_method("place"):
+		placer.place(target, proposed, QuickUI.PlaceIntent.INTERACTIVE)
 	else:
-		dragged_ui.global_position = proposed
+		target.position = QuickUI.global_to_layout(target, proposed)
 
-## 按模式与可选区间限制父节点本地坐标。
-func _apply_drag_constraints(position: Vector2) -> Vector2:
-	var result := position
-	match drag_mode:
-		DragMode.FREE:
-			if use_axis_range_limit:
-				result.x = clampf(result.x, horizontal_range_min, horizontal_range_max)
-				result.y = clampf(result.y, vertical_range_min, vertical_range_max)
-		DragMode.HORIZONTAL_ONLY:
-			result.y = _grab_start_pos.y
-			if use_axis_range_limit:
-				result.x = clampf(result.x, horizontal_range_min, horizontal_range_max)
-		DragMode.VERTICAL_ONLY:
-			result.x = _grab_start_pos.x
-			if use_axis_range_limit:
-				result.y = clampf(result.y, vertical_range_min, vertical_range_max)
-	return result
+func cancel_drag() -> void:
+	_end_drag(true)
+
+func _end_drag(cancelled := false) -> void:
+	if not is_draging: return
+	is_draging = false
+	_pointer = -2
+	_proposal = Vector2.INF
+	set_process_input(false)
+	var delta := Vector2.ZERO
+	if is_instance_valid(_drag_target):
+		delta = QuickUI.layout_to_global(_drag_target, _drag_target.position) - _grab_start_pos
+	if is_instance_valid(ability_host): ability_host.drag_finished(cancelled)
+	_drag_target = null
+	_drag_parent = null
+	drag_finished.emit(cancelled)
+	if not cancelled: drag_down.emit(delta)
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PAUSED or what == NOTIFICATION_WM_WINDOW_FOCUS_OUT or what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		cancel_drag()

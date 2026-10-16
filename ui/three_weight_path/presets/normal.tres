@@ -1,0 +1,51 @@
+[gd_resource type="Resource" script_class="PathDefinition" load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://addons/gdbase/ui/procedural_animation/path_definition.gd" id="1"]
+[ext_resource type="Script" path="res://addons/gdbase/ui/procedural_animation/path_shape.gd" id="2"]
+
+[sub_resource type="Curve2D" id="Curve_0"]
+resource_local_to_scene = true
+bake_interval = 1.0
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -187.500, 200.000, 0, 0, 0, 0, -100.000, 200.000, 0, 0, 0, 0, 187.500, -200.000, 0, 0, 0, 0, 100.000, -200.000, 0, 0, 0, 0, -187.500, 200.000)
+}
+point_count = 5
+
+[sub_resource type="Resource" id="Shape_0"]
+resource_local_to_scene = true
+script = ExtResource("2")
+curve = SubResource("Curve_0")
+width = 1.8
+
+[sub_resource type="Curve2D" id="Curve_1"]
+resource_local_to_scene = true
+bake_interval = 1.0
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, -55.000, -10.000, 0, 0, 0, 0, -187.500, -200.000, 0, 0, 0, 0, -100.000, -200.000, 0, 0, 0, 0, -20.000, -87.500)
+}
+point_count = 4
+
+[sub_resource type="Resource" id="Shape_1"]
+resource_local_to_scene = true
+script = ExtResource("2")
+curve = SubResource("Curve_1")
+width = 1.8
+
+[sub_resource type="Curve2D" id="Curve_2"]
+resource_local_to_scene = true
+bake_interval = 1.0
+_data = {
+"points": PackedVector2Array(0, 0, 0, 0, 55.000, 10.000, 0, 0, 0, 0, 187.500, 200.000, 0, 0, 0, 0, 100.000, 200.000, 0, 0, 0, 0, 20.000, 87.500)
+}
+point_count = 4
+
+[sub_resource type="Resource" id="Shape_2"]
+resource_local_to_scene = true
+script = ExtResource("2")
+curve = SubResource("Curve_2")
+width = 1.8
+
+[resource]
+resource_local_to_scene = true
+script = ExtResource("1")
+shapes = Array[ExtResource("2")]([SubResource("Shape_0"), SubResource("Shape_1"), SubResource("Shape_2")])

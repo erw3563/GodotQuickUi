@@ -2,6 +2,8 @@
 class_name QuickMousePlace
 extends Node
 ## 负责处理目标控件的位置，根据鼠标坐标、控件尺寸和偏移计算落点。
+## 鼠标坐标取最近一次移动事件的画布位置（合成输入与无头运行同样生效），
+## 尚未收到移动事件时回退真实光标位置，保持键盘触发的首次定位可用。
 ## 配置 [member placer] 时，以 PLACEMENT 意图提交位置；placer 留空时直接设置位置。
 ## 统一播放契约：[method play] 执行一次定位，同步完成后发出 [signal play_finished]。
 
@@ -25,6 +27,28 @@ signal play_finished
 @export var placer: Node
 
 
+## 最近一次鼠标移动的画布坐标；随输入事件更新，合成输入与无头运行同样生效，
+## 尚未收到移动或光标离开窗口时保持在画布外。
+var _pointer_canvas_position := Vector2.INF
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventMouseMotion and is_instance_valid(control) and control.is_inside_tree():
+		_pointer_canvas_position = control.get_global_transform() * control.make_input_local(event).position
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_MOUSE_EXIT:
+		_pointer_canvas_position = Vector2.INF
+
+
+## 定位基准的指针画布位置；尚未收到移动事件时回退真实光标位置。
+func _pointer_position() -> Vector2:
+	if _pointer_canvas_position != Vector2.INF:
+		return _pointer_canvas_position
+	return control.get_global_mouse_position()
+
+
 ## 统一播放契约：定位到鼠标处——先按最小尺寸算定位（隐藏状态下 size 即最小大小），
 ## 落笔经仲裁者钳制后同步发完成信号。返回值表示目标控件存在并已执行定位调用。
 func play() -> bool:
@@ -32,7 +56,7 @@ func play() -> bool:
 		return false
 	if shrink_to_content:
 		control.reset_size()
-	var new_pos := control.get_global_mouse_position()
+	var new_pos := _pointer_position()
 	if not is_point_in_mouse_pos:
 		if is_control_x_center:
 			new_pos.x -= control.size.x / 2

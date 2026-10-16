@@ -1,0 +1,140 @@
+[gd_scene format=3 uid="uid://d0lss8is6fdtv"]
+
+[ext_resource type="Script" uid="uid://b2yp4ln5mx3uw" path="res://addons/gdbase/ui/showcase/panel_node/pages/page_zoom_panel.gd" id="1_cmrmq"]
+[ext_resource type="Script" uid="uid://bve2xqm4w07kc" path="res://addons/gdbase/ui/panel_node/zoom_panel.gd" id="2_ety80"]
+
+[node name="PageZoomPanel" type="Control" unique_id=74032084]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_cmrmq")
+
+[node name="HotZone" type="ColorRect" parent="." unique_id=1946285039]
+unique_name_in_owner = true
+visible = false
+layout_mode = 0
+offset_left = 240.0
+offset_top = 160.0
+offset_right = 500.0
+offset_bottom = 360.0
+mouse_filter = 2
+color = Color(0.35, 0.65, 1, 0.1)
+
+[node name="ZoomPanel" type="PanelContainer" parent="." unique_id=1215415121]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(380, 220)
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -190.0
+offset_top = -110.0
+offset_right = 190.0
+offset_bottom = 110.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("2_ety80")
+origin_ratio = Vector2(0, 0)
+animation_duration = 0.6
+animation_transition = 2
+toggle_on_click = true
+
+[node name="Content" type="VBoxContainer" parent="ZoomPanel" unique_id=262061765]
+layout_mode = 2
+theme_override_constants/separation = 10
+
+[node name="Title" type="Label" parent="ZoomPanel/Content" unique_id=752609192]
+layout_mode = 2
+theme_override_font_sizes/font_size = 19
+text = "ZoomPanel"
+
+[node name="Note" type="Label" parent="ZoomPanel/Content" unique_id=1168973716]
+layout_mode = 2
+theme_override_font_sizes/font_size = 14
+text = "入场自原点放大
+收起缩回原点并淡出"
+
+[node name="Toolbar" type="HBoxContainer" parent="." unique_id=398619424]
+layout_mode = 0
+offset_top = 581.0
+offset_right = 404.0
+offset_bottom = 611.0
+theme_override_constants/separation = 8
+
+[node name="ButtonExpand" type="Button" parent="Toolbar" unique_id=8568360]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "展开"
+
+[node name="ButtonCollapse" type="Button" parent="Toolbar" unique_id=2137959258]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "收起"
+
+[node name="ButtonOriginCenter" type="Button" parent="Toolbar" unique_id=983196151]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "原点=中心"
+
+[node name="ButtonOriginTopLeft" type="Button" parent="Toolbar" unique_id=685965032]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "原点=左上"
+
+[node name="Toolbar2" type="HBoxContainer" parent="." unique_id=1946285033]
+layout_mode = 0
+offset_top = 617.0
+offset_right = 735.0
+offset_bottom = 647.0
+theme_override_constants/separation = 8
+
+[node name="ButtonScaleSmall" type="Button" parent="Toolbar2" unique_id=1946285034]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "目标0.6x"
+
+[node name="ButtonScaleNormal" type="Button" parent="Toolbar2" unique_id=1946285035]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "目标1x"
+
+[node name="ButtonScaleLarge" type="Button" parent="Toolbar2" unique_id=1946285036]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "目标1.4x"
+
+[node name="CheckHover" type="CheckBox" parent="Toolbar2" unique_id=1946285037]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "悬停展开"
+
+[node name="CheckClick" type="CheckBox" parent="Toolbar2" unique_id=1946285038]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "点击切换"
+
+[node name="CheckExternalZone" type="CheckBox" parent="Toolbar2" unique_id=1946285040]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "外部热区"
+
+[node name="CheckSeed" type="CheckBox" parent="Toolbar2" unique_id=1946285041]
+unique_name_in_owner = true
+layout_mode = 2
+focus_mode = 0
+text = "收起留种子"

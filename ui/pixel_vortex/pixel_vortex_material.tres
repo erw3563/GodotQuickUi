@@ -1,0 +1,13 @@
+[gd_resource type="ShaderMaterial" format=3 uid="uid://buvaw6vkc40i4"]
+
+[ext_resource type="Shader" uid="uid://c4lecitekmdqh" path="res://addons/gdbase/ui/pixel_vortex/pixel_vortex.gdshader" id="1_b0010"]
+
+[resource]
+shader = ExtResource("1_b0010")
+shader_parameter/openness = 1.0
+shader_parameter/swirl_speed = 0.85
+shader_parameter/pixel_count = 64.0
+shader_parameter/core_color = Color(0.035, 0.027, 0.055, 1)
+shader_parameter/shadow_color = Color(0.16, 0.125, 0.22, 1)
+shader_parameter/spiral_color = Color(0.39, 0.3, 0.51, 1)
+shader_parameter/rim_color = Color(0.66, 0.55, 0.71, 1)

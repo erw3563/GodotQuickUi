@@ -232,6 +232,11 @@ func is_animating() -> bool:
 	return _tween != null and _tween.is_valid() and _tween.is_running()
 
 
+## 释放属性 Tween 的写入权，保留目标属性当前值。
+func interrupt() -> void:
+	_kill_tween()
+
+
 ## 停止进行中的动画并保留当前属性值，完成信号由 [method _emit_finished] 的口径决定。
 func _kill_tween() -> void:
 	if _tween != null:

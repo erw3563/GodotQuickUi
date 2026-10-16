@@ -1,0 +1,36 @@
+[gd_scene format=3]
+
+[ext_resource type="PackedScene" path="res://addons/gdbase/showcase/showcase_sandbox.tscn" id="base"]
+[ext_resource type="Script" path="res://addons/gdbase/showcase/showcase_entry.gd" id="entry"]
+[ext_resource type="PackedScene" uid="uid://b66qisqqa07qj" path="res://addons/gdbase/ui/showcase/panel_node/pages/page_pocket_drawer.tscn" id="6_gf3yo"]
+[ext_resource type="PackedScene" uid="uid://b8x8kbownttd4" path="res://addons/gdbase/ui/showcase/panel_node/pages/page_side_bar.tscn" id="7_5lqq4"]
+[ext_resource type="PackedScene" uid="uid://d0lss8is6fdtv" path="res://addons/gdbase/ui/showcase/panel_node/pages/page_zoom_panel.tscn" id="8_l2mtg"]
+[ext_resource type="PackedScene" uid="uid://c10i4cwvaitbw" path="res://addons/gdbase/ui/showcase/panel_node/pages/page_rotate_panel.tscn" id="13_rotpage"]
+
+[sub_resource type="Resource" id="Entry_pocket_drawer"]
+script = ExtResource("entry")
+id = &"pocket_drawer"
+title = "抽屉 PocketDrawerPanel"
+scene = ExtResource("6_gf3yo")
+
+[sub_resource type="Resource" id="Entry_side_bar"]
+script = ExtResource("entry")
+id = &"side_bar"
+title = "侧边栏 SideBarPanel"
+scene = ExtResource("7_5lqq4")
+
+[sub_resource type="Resource" id="Entry_zoom_panel"]
+script = ExtResource("entry")
+id = &"zoom_panel"
+title = "缩放面板 ZoomPanel"
+scene = ExtResource("8_l2mtg")
+
+[sub_resource type="Resource" id="Entry_rotate_panel"]
+script = ExtResource("entry")
+id = &"rotate_panel"
+title = "旋转面板 RotatePanel"
+scene = ExtResource("13_rotpage")
+
+[node name="PanelNodeShowcaseSandbox" instance=ExtResource("base")]
+title = "面板系组件演示台"
+entries = Array[ExtResource("entry")]([SubResource("Entry_pocket_drawer"), SubResource("Entry_side_bar"), SubResource("Entry_zoom_panel"), SubResource("Entry_rotate_panel")])
