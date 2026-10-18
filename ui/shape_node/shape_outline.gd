@@ -1,5 +1,14 @@
 class_name ShapeOutline
 extends RefCounted
+
+class Settings:
+	extends RefCounted
+	var corner_radius: float = 0.0
+	var polygon_sides: int = 6
+	var star_points: int = 5
+	var star_inner_ratio: float = 0.45
+	var segments: int = 0
+
 ## 形状轮廓几何：按目标矩形生成闭合折线顶点，供绘制与命中共用。
 ## 职责为坐标计算，节点、状态与画布命令归调用方；顶点按闭合顺序排列，绘制方在末尾补回首点。
 
@@ -34,12 +43,14 @@ const MAX_STAR_INNER_RATIO := 0.95
 static func build_points(
 	kind: Kind,
 	rect: Rect2,
-	corner_radius := 0.0,
-	polygon_sides := 6,
-	star_points := 5,
-	star_inner_ratio := 0.45,
-	segments := 0
+	settings: Settings = null
 ) -> PackedVector2Array:
+	var options := settings if settings != null else Settings.new()
+	var corner_radius := options.corner_radius
+	var polygon_sides := options.polygon_sides
+	var star_points := options.star_points
+	var star_inner_ratio := options.star_inner_ratio
+	var segments := options.segments
 	if rect.size.x <= 0.0 or rect.size.y <= 0.0:
 		return PackedVector2Array()
 	var center := rect.get_center()

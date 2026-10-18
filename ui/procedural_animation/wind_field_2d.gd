@@ -53,6 +53,15 @@ class LocalSource:
 	var radius := 180.0
 	var decay_rate := 8.0
 	var age := 0.0
+	static func create(center: Vector2, wind: Vector2) -> LocalSource:
+		var source := LocalSource.new()
+		source.position = center
+		source.velocity = wind
+		return source
+	func with_falloff(reach: float, decay: float) -> LocalSource:
+		radius = reach
+		decay_rate = decay
+		return self
 
 var _sources: Dictionary = {}
 var _phase := 0.0
@@ -85,8 +94,11 @@ func advance(delta: float) -> void:
 ## Caller owns its id; updating refreshes age. At capacity, new ids are rejected,
 ## while existing ids can still update. Zero velocity/radius removes that id.
 ## Local influence applies its velocity with smoothstep radial falloff.
-func set_source(id: int, canvas_position: Vector2, wind_velocity: Vector2,
-		radius: float = 180.0, decay_rate: float = 8.0) -> bool:
+func set_source(id: int, input: LocalSource) -> bool:
+	var canvas_position := input.position
+	var wind_velocity := input.velocity
+	var radius := input.radius
+	var decay_rate := input.decay_rate
 	if not enabled or not _valid_position(canvas_position) or not wind_velocity.is_finite() or not is_finite(radius) or not is_finite(decay_rate):
 		return false
 	var velocity := _limited_vector(wind_velocity, MAX_SPEED)

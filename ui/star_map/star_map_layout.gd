@@ -176,19 +176,19 @@ func _project_constraints(spacing: float, maximum: float) -> void:
 			var offset := positions[edge.y] - positions[edge.x]
 			if offset.length_squared() <= maximum_squared:
 				continue
-			var distance := offset.length()
-			largest_correction = maxf(largest_correction, _project_pair(edge.x, edge.y, offset, distance, maximum, false))
+			largest_correction = maxf(largest_correction, _project_pair(edge.x, edge.y, maximum, false))
 		for index in positions.size():
 			for other in range(index + 1, positions.size()):
 				var offset := positions[other] - positions[index]
 				if offset.length_squared() >= spacing_squared:
 					continue
-				var distance := offset.length()
-				largest_correction = maxf(largest_correction, _project_pair(index, other, offset, distance, spacing, true))
+				largest_correction = maxf(largest_correction, _project_pair(index, other, spacing, true))
 		if largest_correction <= CONSTRAINT_TOLERANCE * 0.25:
 			break
 
-func _project_pair(a: int, b: int, offset: Vector2, distance: float, target: float, minimum: bool) -> float:
+func _project_pair(a: int, b: int, target: float, minimum: bool) -> float:
+	var offset := positions[b] - positions[a]
+	var distance := offset.length()
 	var weight_a := 0.0 if _pin_mask[a] else 1.0
 	var weight_b := 0.0 if _pin_mask[b] else 1.0
 	var total := weight_a + weight_b

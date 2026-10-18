@@ -169,9 +169,11 @@ func source_uv(point: Vector2, source_is_b: bool) -> Vector2:
  var anchor := landmark()
  var center := to_center if source_is_b else from_center
  var radius := to_radius if source_is_b else from_radius
- return point.lerp(_matched_point(point,Vector2(anchor.x,anchor.y),anchor.z,center*size,radius),match_strength)/size
+ return point.lerp(_matched_point(point,anchor,center*size,radius),match_strength)/size
 
-func _matched_point(point:Vector2, center:Vector2, target_radius:float, source_center:Vector2, source_radius:float)->Vector2:
+func _matched_point(point:Vector2, target:Vector3, source_center:Vector2, source_radius:float)->Vector2:
+ var center:=Vector2(target.x,target.y)
+ var target_radius:=target.z
  var offset:=point-center
  var radius:=offset.length()
  if radius<0.00001: return source_center

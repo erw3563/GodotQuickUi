@@ -306,13 +306,7 @@ func _rebuild() -> void:
 	var curve_list: Array[Curve2D] = []
 	if definition != null:
 		curve_list = definition.get_curves()
-	var baked := PathPatternScatterBuilder.bake_emission(
-		curve_list,
-		columns,
-		samples_per_column,
-		half_width,
-		random_seed
-	)
+	var baked := PathPatternScatterBuilder.bake_emission(curve_list, PathPatternScatterBuilder.BandSampling.new(columns, samples_per_column, half_width), random_seed)
 	var positions: PackedVector2Array = baked["positions"]
 	_emission_bounds = Rect2()
 	if not positions.is_empty():

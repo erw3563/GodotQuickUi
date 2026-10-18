@@ -4,17 +4,47 @@
 class_name PathPatternScatterBuilder
 extends RefCounted
 
+class BandSampling:
+	extends RefCounted
+	var columns: int
+	var samples_per_column: int
+	var half_width: float
+	func _init(count: int, samples: int, width: float) -> void:
+		columns = count
+		samples_per_column = samples
+		half_width = width
+
+class StampVariation:
+	extends RefCounted
+	var weights: Array[float]
+	var scale_min: float
+	var scale_max: float
+	var angle_min: float
+	var angle_max: float
+	func _init(pattern_weights: Array[float]) -> void:
+		weights = pattern_weights
+	func with_scale(minimum: float, maximum: float) -> StampVariation:
+		scale_min = minimum
+		scale_max = maximum
+		return self
+	func with_angle(minimum: float, maximum: float) -> StampVariation:
+		angle_min = minimum
+		angle_max = maximum
+		return self
+
+
 ## 沿路径列表烘焙发射点与单位切线方向。
 ## 每条有效曲线（至少 2 个点）按弧长等距取 columns 个基点；零长度曲线采用首点与右向切线。
 ## 每个基点再采 samples_per_column 个横向点，
 ## 横向偏移落在 [-half_width, half_width]。无效曲线跳过。columns 或 samples_per_column 小于 1 时返回空。
 static func bake_emission(
 	paths: Array[Curve2D],
-	columns: int,
-	samples_per_column: int,
-	half_width: float,
+	sampling: BandSampling,
 	random_seed: int
 ) -> Dictionary:
+	var columns := sampling.columns
+	var samples_per_column := sampling.samples_per_column
+	var half_width := sampling.half_width
 	var positions := PackedVector2Array()
 	var directions := PackedVector2Array()
 	if columns < 1 or samples_per_column < 1:
@@ -142,13 +172,14 @@ static func pick_weighted_pattern_indices(
 ## 每点依次抽图案、缩放、角度；独立 RNG（seed = random_seed），与 bake_emission 分离。
 static func bake_stamp_instances(
 	point_count: int,
-	weights: Array[float],
-	scale_min: float,
-	scale_max: float,
-	angle_degrees_min: float,
-	angle_degrees_max: float,
+	variation: StampVariation,
 	random_seed: int
 ) -> Dictionary:
+	var weights := variation.weights
+	var scale_min := variation.scale_min
+	var scale_max := variation.scale_max
+	var angle_degrees_min := variation.angle_min
+	var angle_degrees_max := variation.angle_max
 	var safe_count := maxi(point_count, 0)
 	var pattern_indices := PackedInt32Array()
 	var scales := PackedFloat32Array()

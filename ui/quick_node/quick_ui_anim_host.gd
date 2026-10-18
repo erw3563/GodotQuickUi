@@ -1,4 +1,4 @@
-﻿@tool
+@tool
 class_name QuickUiAnimHost
 extends Node
 ## 快捷系演出宿主：单向时间线播放器——按直接子节点树序播放名下演出件的一趟
@@ -416,7 +416,7 @@ func _is_step_node(node: Node) -> bool:
 func _play_step_node(node: Node, generation: int) -> bool:
 	_track_active_steps([node])
 	var step_ok: bool = await _play_step(
-		node, &"play", node.play_finished, _step_wait_timeout(node), generation
+		node, _step_wait_timeout(node), generation
 	)
 	if generation == _play_generation:
 		if step_ok:
@@ -432,14 +432,15 @@ func _play_step_node(node: Node, generation: int) -> bool:
 ## 信号在调用帧内发射）。返回 false 表示序列被取消；已处终态（play 返回 false）
 ## 无操作即完成；有界等待超时则前进并警告（RotationWobble.stop/abort 等外部中止
 ## 路径明确不发 finished，靠超时兜底不死等）。
-func _play_step(node: Node, method: StringName, completion: Signal, timeout: float, generation: int) -> bool:
+func _play_step(node: Node, timeout: float, generation: int) -> bool:
+	var completion: Signal = node.play_finished
 	var fired: Array = [false]
 	var on_done := func(_signal_arg = null) -> void: fired[0] = true
 	var on_cancel := func() -> void: _on_step_cancelled(generation)
 	completion.connect(on_done, CONNECT_ONE_SHOT)
 	if node.has_signal("play_cancelled"):
 		node.connect("play_cancelled", on_cancel, CONNECT_ONE_SHOT)
-	var started: bool = node.call(method)
+	var started: bool = node.call(&"play")
 	var completed := generation == _play_generation and is_inside_tree() and is_instance_valid(node) and node.is_inside_tree() and not node.is_queued_for_deletion()
 	if started and not fired[0] and completed:
 		completed = await _await_step_completion(node, fired, timeout, generation)

@@ -163,4 +163,4 @@ func _emit_motion(field: WindField2D, canvas_position: Vector2, displacement: Ve
 	# Bound the integration window and sub-millisecond event velocity.
 	var dt := clampf(delta, 0.001, WindField2D.MAX_DELTA)
 	var velocity := WindField2D._limited_vector(displacement / dt, max_speed) * strength
-	return field.set_source(get_instance_id(), canvas_position, velocity, radius, decay_rate)
+	return field.set_source(get_instance_id(), WindField2D.LocalSource.create(canvas_position, velocity).with_falloff(radius, decay_rate))

@@ -126,28 +126,14 @@ func _rebuild() -> void:
 	var curve_list: Array[Curve2D] = []
 	if definition != null:
 		curve_list = definition.get_curves()
-	var baked := PathPatternScatterBuilder.bake_emission(
-		curve_list,
-		columns,
-		samples_per_column,
-		half_width,
-		random_seed
-	)
+	var baked := PathPatternScatterBuilder.bake_emission(curve_list, PathPatternScatterBuilder.BandSampling.new(columns, samples_per_column, half_width), random_seed)
 	var positions: PackedVector2Array = baked["positions"]
 	var valid_patterns := _collect_valid_patterns()
 	if positions.is_empty() or valid_patterns.is_empty():
 		update_configuration_warnings()
 		return
 
-	var instances := PathPatternScatterBuilder.bake_stamp_instances(
-		positions.size(),
-		_collect_weights(valid_patterns.size()),
-		scale_min,
-		scale_max,
-		angle_degrees_min,
-		angle_degrees_max,
-		random_seed
-	)
+	var instances := PathPatternScatterBuilder.bake_stamp_instances(positions.size(), PathPatternScatterBuilder.StampVariation.new(_collect_weights(valid_patterns.size())).with_scale(scale_min, scale_max).with_angle(angle_degrees_min, angle_degrees_max), random_seed)
 	var pattern_indices: PackedInt32Array = instances["pattern_indices"]
 	var scales: PackedFloat32Array = instances["scales"]
 	var angles_radians: PackedFloat32Array = instances["angles_radians"]

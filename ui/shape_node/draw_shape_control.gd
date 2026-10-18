@@ -132,14 +132,12 @@ func _has_point(point: Vector2) -> bool:
 ## 当前尺寸下的形状轮廓（局部坐标，闭合顺序）；尺寸退化时返回空数组。
 ## 调用方按需查询轮廓用于拾取、对齐或自绘扩展。
 func get_outline_points() -> PackedVector2Array:
-	return ShapeOutline.build_points(
-		shape,
-		_content_rect(),
-		corner_radius,
-		polygon_sides,
-		star_points,
-		star_inner_ratio
-	)
+	var settings := ShapeOutline.Settings.new()
+	settings.corner_radius = corner_radius
+	settings.polygon_sides = polygon_sides
+	settings.star_points = star_points
+	settings.star_inner_ratio = star_inner_ratio
+	return ShapeOutline.build_points(shape, _content_rect(), settings)
 
 
 ## 按当前形状轮廓判断局部坐标点是否命中；凸凹形状共用同一入口。

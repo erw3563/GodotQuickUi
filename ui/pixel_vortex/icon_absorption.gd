@@ -1,4 +1,20 @@
+class_name IconAbsorption
 extends Control
+
+class ImageSource:
+	extends RefCounted
+	var texture: Texture2D
+	var transform: Transform2D
+	var size: Vector2
+	var rotation: float = 0.0
+	func _init(image: Texture2D, canvas_transform: Transform2D, dimensions: Vector2) -> void:
+		texture = image
+		transform = canvas_transform
+		size = dimensions
+	func with_rotation(angle: float) -> ImageSource:
+		rotation = angle
+		return self
+
 ## 把已捕获的图标纹理副本沿旋转收缩轨迹送往指定画布位置。
 ## 调用者持有业务提交与完成后的导航；本场景只管理自己的视觉副本。
 signal finished
@@ -8,8 +24,11 @@ var _tween: Tween
 var _generation := 0
 @onready var _icon: TextureRect = $Icon
 
-func play(texture: Texture2D, source_transform: Transform2D, source_size: Vector2,
-		target_canvas_position: Vector2, source_rotation: float = 0.0) -> void:
+func play(source: ImageSource, target_canvas_position: Vector2) -> void:
+	var texture := source.texture
+	var source_transform := source.transform
+	var source_size := source.size
+	var source_rotation := source.rotation
 	cancel()
 	var generation := _generation
 	var canvas_to_local := get_global_transform_with_canvas().affine_inverse()

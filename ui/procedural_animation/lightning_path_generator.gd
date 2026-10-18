@@ -1,6 +1,17 @@
 @tool
 class_name LightningPathGenerator
 extends Resource
+
+class BoltProfile:
+	extends RefCounted
+	var subdivisions: int
+	var displacement: float
+	var decay: float
+	func _init(levels: int, amplitude: float, falloff: float) -> void:
+		subdivisions = levels
+		displacement = amplitude
+		decay = falloff
+
 ## Deterministic geometry authoring, independent of nodes, playback and rendering.
 ## generate() returns an editable PathDefinition with a trunk followed by branches.
 ## Each call creates its own Curve2D resources and preserves input and output snapshots.
@@ -43,7 +54,7 @@ func generate_with_metadata() -> Dictionary:
 	var subdivisions := clampi(detail, 1, MAX_DETAIL)
 	var displacement := _finite_clamp(jaggedness, 0.0, 1.0, 0.12)
 	var decay := _finite_clamp(roughness, 0.0, 1.0, 0.55)
-	curves.append(_bolt(a, b, subdivisions, displacement, decay, rng))
+	curves.append(_bolt(a, b, BoltProfile.new(subdivisions, displacement, decay), rng))
 	var limit := clampi(branch_count, 0, MAX_BRANCHES)
 	var depth_limit := clampi(branch_depth, 0, MAX_DEPTH)
 	var chance := _finite_clamp(branch_probability, 0.0, 1.0, 0.65)
@@ -71,7 +82,7 @@ func generate_with_metadata() -> Dictionary:
 				var reach := chord_length * maxf(0.15, 1.0 - fraction) * length_ratio * rng.randf_range(0.75, 1.25)
 				var tip := _safe_point(origin + direction * reach)
 				if origin.distance_squared_to(tip) <= 0.000001: continue
-				curves.append(_bolt(origin, tip, maxi(1, subdivisions - depth - 1), displacement, decay, rng))
+				curves.append(_bolt(origin, tip, BoltProfile.new(maxi(1, subdivisions - depth - 1), displacement, decay), rng))
 				parents.append(parent_index)
 				attachments.append(index)
 				depths.append(depth + 1)
@@ -79,7 +90,10 @@ func generate_with_metadata() -> Dictionary:
 	definition.set_curves(curves)
 	return {"definition": definition, "parents": parents, "attachment_indices": attachments, "depths": depths}
 
-func _bolt(a: Vector2, b: Vector2, subdivisions: int, displacement: float, decay: float, rng: RandomNumberGenerator) -> Curve2D:
+func _bolt(a: Vector2, b: Vector2, profile: BoltProfile, rng: RandomNumberGenerator) -> Curve2D:
+	var subdivisions := profile.subdivisions
+	var displacement := profile.displacement
+	var decay := profile.decay
 	var curve := Curve2D.new()
 	# Bake spacing bounds sample density across large authoring coordinates.
 	curve.bake_interval = maxf(1.0, a.distance_to(b) / 512.0)
