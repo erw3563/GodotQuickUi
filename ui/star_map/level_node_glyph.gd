@@ -5,7 +5,7 @@ func _draw() -> void:
 	if presentation.is_empty(): return
 	var color: Color = presentation.tint
 	var accent: Color = presentation.accent
-	var dark := Color("292b25")
+	var dark: Color = presentation.get("dark", Color("292b25"))
 	var texture: Texture2D = presentation.texture
 	if texture != null:
 		var dims := texture.get_size()
