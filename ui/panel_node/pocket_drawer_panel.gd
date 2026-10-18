@@ -13,6 +13,14 @@ enum PivotCorner {
 	BOTTOM_RIGHT,
 }
 
+## 展开/收起的表现方式。
+enum AnimationStyle {
+	## 改变抽屉尺寸，收起成 collapsed_size 方块（默认，原行为）。
+	RESIZE,
+	## 尺寸保持展开大小，从固定角缩放并淡入淡出；内容不隐藏、不重排，收起后隐藏抽屉。
+	SCALE_FADE,
+}
+
 @export_group("动画预览")
 @export_tool_button("播放一次", "Play") var preview_play_action: Callable = preview_play
 @export_tool_button("停止并恢复", "Stop") var preview_stop_action: Callable = preview_stop
@@ -56,6 +64,15 @@ enum PivotCorner {
 
 ## 动画缓动类型
 @export var animation_ease: Tween.EaseType = Tween.EASE_OUT
+
+## 展开/收起的表现方式；SCALE_FADE 适合背景由子控件绘制、不能随尺寸压缩的抽屉。
+@export var animation_style: AnimationStyle = AnimationStyle.RESIZE
+
+## SCALE_FADE：收起终点相对展开尺寸的缩放
+@export_range(0.05, 1.0, 0.01) var collapsed_scale: float = 0.2
+
+## SCALE_FADE：收起时代替抽屉显示的控件（如独立的背包按钮），与抽屉反向淡入淡出；展开期间不接收鼠标。
+@export var collapsed_proxy: CanvasItem
 
 @export_group("交互")
 ## 用于切换的 InputMap 动作名（留空则不响应按键）
@@ -132,7 +149,7 @@ func _ready() -> void:
 func _get_minimum_size() -> Vector2:
 	if Engine.is_editor_hint() and not is_previewing():
 		return Vector2.ZERO
-	if _is_layout_ready and not is_expanded:
+	if _is_layout_ready and not is_expanded and not _uses_scale_fade():
 		return Vector2(collapsed_size, collapsed_size)
 	var measured := Vector2.ZERO
 	for child in get_children():
@@ -294,6 +311,9 @@ func _initialize_drawer_state() -> void:
 		_authored_position,
 		_content_size
 	)
+	if _uses_scale_fade():
+		_initialize_scale_fade_state()
+		return
 	_set_content_visible(is_expanded)
 	_apply_size_flags_for_state()
 	_is_layout_ready = true
@@ -316,7 +336,7 @@ func _capture_authored_position() -> void:
 
 
 func _pin_authored_if_collapsed() -> void:
-	if is_expanded:
+	if is_expanded or _uses_scale_fade():
 		return
 	_set_drawer_rect(
 		Vector2(collapsed_size, collapsed_size),
@@ -354,7 +374,7 @@ func _on_resized() -> void:
 		return
 	if _drawer_tween != null and _drawer_tween.is_running():
 		return
-	if _is_layout_ready and not is_expanded:
+	if _is_layout_ready and not is_expanded and not _uses_scale_fade():
 		_queue_collapsed_size_correction()
 
 
@@ -374,7 +394,7 @@ func _correct_collapsed_size(preview_token: int = -1) -> void:
 		if preview_token >= 0 and not _preview.is_current(preview_token):
 			return
 	_is_collapse_correction_queued = false
-	if not is_inside_tree() or not _is_layout_ready or is_expanded:
+	if not is_inside_tree() or not _is_layout_ready or is_expanded or _uses_scale_fade():
 		return
 	if _drawer_tween != null and _drawer_tween.is_running():
 		return
@@ -400,7 +420,7 @@ func _apply_size_flags_for_state() -> void:
 		return
 	if not _is_ready:
 		return
-	if is_expanded:
+	if is_expanded or _uses_scale_fade():
 		size_flags_horizontal = _authored_size_flags_horizontal
 		size_flags_vertical = _authored_size_flags_vertical
 		return
@@ -451,6 +471,9 @@ func _apply_drawer_size(animate: bool) -> void:
 	if Engine.is_editor_hint() and not is_previewing():
 		return
 	if not is_inside_tree() or _is_applying_size:
+		return
+	if _uses_scale_fade():
+		_apply_scale_fade(animate)
 		return
 	if is_expanded:
 		# 展开过程中先不显示内部 UI，避免最小尺寸把动画目标撑大。
@@ -582,10 +605,94 @@ func _kill_drawer_tween() -> void:
 	_drawer_tween = null
 
 
+#region 缩放淡入淡出（SCALE_FADE）
+
+var _proxy_mouse_filter: int = -1
+
+
+func _uses_scale_fade() -> bool:
+	return animation_style == AnimationStyle.SCALE_FADE
+
+
+## 尺寸固定为展开内容大小，收起态只靠缩放、透明度和 visible 表达。
+func _initialize_scale_fade_state() -> void:
+	_set_content_visible(true)
+	_apply_size_flags_for_state()
+	_is_layout_ready = true
+	update_minimum_size()
+	_set_drawer_rect(_content_size, _get_position_from_pinned_corner(_content_size))
+	_apply_scale_fade(false)
+	_update_hover_process()
+
+
+func _get_scale_fade_pivot() -> Vector2:
+	var pivot := Vector2.ZERO
+	if pivot_corner == PivotCorner.TOP_RIGHT or pivot_corner == PivotCorner.BOTTOM_RIGHT:
+		pivot.x = size.x
+	if pivot_corner == PivotCorner.BOTTOM_LEFT or pivot_corner == PivotCorner.BOTTOM_RIGHT:
+		pivot.y = size.y
+	return pivot
+
+
+## 从当前缩放/透明度出发补间；中途反向时按剩余进度缩短时长，不跳回起点。
+func _apply_scale_fade(animate: bool) -> void:
+	_kill_drawer_tween()
+	pivot_offset = _get_scale_fade_pivot()
+	var target_alpha := 1.0 if is_expanded else 0.0
+	var target_scale := Vector2.ONE if is_expanded else Vector2.ONE * collapsed_scale
+	var proxy_alpha := 1.0 - target_alpha
+	if is_expanded:
+		visible = true
+	_set_proxy_interactive(not is_expanded)
+	if is_instance_valid(collapsed_proxy):
+		collapsed_proxy.visible = true
+	var remaining := absf(target_alpha - modulate.a)
+	var duration := animation_duration * clampf(remaining, 0.0, 1.0)
+	if not animate or not _is_ready or duration <= 0.0:
+		scale = target_scale
+		modulate.a = target_alpha
+		if is_instance_valid(collapsed_proxy):
+			collapsed_proxy.modulate.a = proxy_alpha
+		_on_scale_fade_finished()
+		return
+	_drawer_tween = create_tween()
+	_drawer_tween.set_trans(animation_transition)
+	_drawer_tween.set_ease(animation_ease)
+	_drawer_tween.set_parallel(true)
+	_drawer_tween.tween_property(self, "scale", target_scale, duration)
+	_drawer_tween.tween_property(self, "modulate:a", target_alpha, duration)
+	if is_instance_valid(collapsed_proxy):
+		_drawer_tween.tween_property(collapsed_proxy, "modulate:a", proxy_alpha, duration)
+	_drawer_tween.chain().tween_callback(_on_scale_fade_finished)
+
+
+func _on_scale_fade_finished() -> void:
+	_drawer_tween = null
+	if is_expanded:
+		if is_instance_valid(collapsed_proxy):
+			collapsed_proxy.visible = false
+	else:
+		visible = false
+
+
+## 展开期间替身不拦截点击，避免盖住抽屉角落。
+func _set_proxy_interactive(interactive: bool) -> void:
+	var proxy_control := collapsed_proxy as Control
+	if proxy_control == null:
+		return
+	if _proxy_mouse_filter < 0:
+		_proxy_mouse_filter = proxy_control.mouse_filter
+	proxy_control.mouse_filter = (
+		_proxy_mouse_filter as Control.MouseFilter if interactive else Control.MOUSE_FILTER_IGNORE
+	)
+
+#endregion
+
+
 func _draw() -> void:
 	if Engine.is_editor_hint() and not is_previewing():
 		return
-	if is_expanded or collapsed_title.is_empty():
+	if is_expanded or collapsed_title.is_empty() or _uses_scale_fade():
 		return
 	var font := get_theme_default_font()
 	var font_size := get_theme_default_font_size()
