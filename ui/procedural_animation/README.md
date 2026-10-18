@@ -68,3 +68,25 @@ Shader 只挂在独立画布内的路径网格上；最终输出仍为普通混�
 - 几何复用 `PathPatternScatterBuilder.bake_emission`；实例外观由 `bake_stamp_instances` / `pick_weighted_pattern_indices` 计算。
 - 契约：名下直接子节点均为生成的 `Sprite2D`，不设 owner，不进 `.tscn`；不得挂业务节点。
 - 配置警告：无 definition、无有效曲线、无图案、权重和为 0。
+
+# 路径弧长变形（PathMorph）缺失曲线模式
+
+`PathMorph` 按列表索引对应 `source` 与 `destination` 的曲线；只在一侧存在的曲线由 `missing_curve_mode`（Inspector「Missing Curves」组）决定出现方式：
+
+- `COLLAPSE_TO_CENTROID`（默认）：缺失一侧取该曲线采样点的质心，曲线从质心放大出现、宽度从 0 过渡。
+- `GROW_FROM_ANCHOR`：曲线挂在父曲线的挂点上，从挂点沿弧长生长，宽度在生长初段从 0 升到原宽度；生长量为 0 时宽度为 0。挂点随父曲线的当前变形移动。
+  - `destination_anchors` / `source_anchors`：`PathAnchorSet`，按对应定义的曲线索引给出父曲线索引 `parents` 与挂点归一化弧长 `fractions`。只在 destination 存在的曲线读 `destination_anchors`，随 progress 增大而长出；只在 source 存在的曲线读 `source_anchors`，随 progress 增大而收回。
+  - 时序：挂在双侧都存在的父曲线上的曲线按挂点弧长先后依次开始；嵌套曲线在父曲线长过挂点后开始；全部生长落在 `anchor_growth_window` 的 progress 区间内，单根时长由 `anchor_growth_duration` 决定。progress 回落时按相反顺序收回。
+  - `anchor_follow_rotation`：开启后，曲线按挂点处父曲线切线相对目标形态的转角旋转；默认关闭，曲线保持目标形态的朝向平移。
+  - 父曲线索引须小于自身索引，且父曲线在同一侧存在；挂点缺失或不合法的曲线使用质心方式。
+
+`LightningPathGenerator.generate_with_metadata()` 的返回字典含 `anchors`（`PathAnchorSet`），与 `definition` 配套：
+
+```gdscript
+var metadata := generator.generate_with_metadata()
+morph.destination = metadata.definition
+morph.destination_anchors = metadata.anchors
+morph.missing_curve_mode = PathMorph.MissingCurveMode.GROW_FROM_ANCHOR
+```
+
+演示：`addons/gdbase/ui/procedural_animation/examples/path_morph_anchor_grow_demo.tscn`（直线变闪电再变回，循环播放）。

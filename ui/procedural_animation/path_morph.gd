@@ -4,8 +4,19 @@ extends Node
 ## Arc-length morph driver. Inputs are read-only; output identity belongs to this node.
 ## Shapes correspond by list index. Missing paths collapse and fade their width to zero.
 ## Mixed open/closed pairs preserve the authored seam; closed pairs align once per rebuild.
+## missing_curve_mode selects how a path present on one side only appears: it collapses to
+## its centroid, or it grows along its arc length from an anchor on its parent path.
 signal updated
 signal finished
+
+enum MissingCurveMode { COLLAPSE_TO_CENTROID, GROW_FROM_ANCHOR }
+
+## Schedule offset of a first-level anchored path per unit of anchor arc-length fraction.
+const ANCHOR_STAGGER := 0.55
+## Schedule gap between a parent passing an anchor and the child starting to grow.
+const ANCHOR_CHILD_GAP := 0.03
+## Growth amount over which an anchored path's width rises from zero to its authored width.
+const ANCHOR_WIDTH_RAMP := 0.1
 
 @export var source: PathDefinition:
 	set(value):
@@ -31,6 +42,41 @@ signal finished
 		paused = value
 		set_process(playing and not paused)
 
+@export_group("Missing Curves")
+@export var missing_curve_mode := MissingCurveMode.COLLAPSE_TO_CENTROID:
+	set(value):
+		missing_curve_mode = value
+		rebuild()
+## Anchors of source paths, indexed like source curves. Used by GROW_FROM_ANCHOR for paths
+## missing from destination; they retract toward their anchors as progress rises.
+@export var source_anchors: PathAnchorSet:
+	set(value):
+		source_anchors = value
+		rebuild()
+## Anchors of destination paths, indexed like destination curves. Used by GROW_FROM_ANCHOR for
+## paths missing from source; they grow from their anchors as progress rises.
+@export var destination_anchors: PathAnchorSet:
+	set(value):
+		destination_anchors = value
+		rebuild()
+## Progress range shared by all anchored growth. Anchored paths on the parent start in anchor
+## order; nested paths start once their parent has grown past the anchor.
+@export var anchor_growth_window := Vector2(0.15, 0.97):
+	set(value):
+		anchor_growth_window = Vector2(clampf(minf(value.x, value.y), 0.0, 1.0), clampf(maxf(value.x, value.y), 0.0, 1.0))
+		rebuild()
+## Growth length of one anchored path, relative to a schedule where the parent spans 1.
+@export_range(0.05, 1.0, 0.01) var anchor_growth_duration := 0.45:
+	set(value):
+		anchor_growth_duration = clampf(value, 0.05, 1.0)
+		rebuild()
+## Rotates each anchored path by the change of its parent's tangent at the anchor.
+@export var anchor_follow_rotation := false:
+	set(value):
+		anchor_follow_rotation = value
+		_publish()
+@export_group("")
+
 var _output: PathDefinition = PathDefinition.new()
 var output: PathDefinition:
 	get:
@@ -40,6 +86,13 @@ var _a: Array[PackedVector2Array] = []
 var _b: Array[PackedVector2Array] = []
 var _width_a: Array[PackedFloat32Array] = []
 var _width_b: Array[PackedFloat32Array] = []
+# Anchored growth per morph entry: curve index, present side (1 destination only, -1 source
+# only, 0 both), parent entry (-1 for lerp), anchor sample position and progress window.
+var _curve_indices := PackedInt32Array()
+var _present_sides := PackedInt32Array()
+var _anchor_parents := PackedInt32Array()
+var _anchor_samples := PackedFloat32Array()
+var _anchor_windows := PackedVector2Array()
 var _watched: Array[Resource] = []
 var _elapsed := 0.0
 var _duration := 1.0
@@ -76,6 +129,11 @@ func rebuild() -> void:
 	_b.clear()
 	_width_a.clear()
 	_width_b.clear()
+	_curve_indices.clear()
+	_present_sides.clear()
+	_anchor_parents.clear()
+	_anchor_samples.clear()
+	_anchor_windows.clear()
 	# Feedback assignments publish an empty output through the same ownership boundary.
 	if source == output or destination == output:
 		_publish()
@@ -83,6 +141,8 @@ func rebuild() -> void:
 	# Definition notifications forward nested geometry and width edits once.
 	_watch(source)
 	_watch(destination)
+	_watch(source_anchors)
+	_watch(destination_anchors)
 	var curves_a: Array[Curve2D] = []
 	var curves_b: Array[Curve2D] = []
 	if source != null: curves_a = source.get_curves()
@@ -99,6 +159,8 @@ func rebuild() -> void:
 		# Sample actual pixel widths by source index, including pairs after empty entries.
 		var width_a := _sample_widths(source, index, not a.is_empty())
 		var width_b := _sample_widths(destination, index, not b.is_empty())
+		_curve_indices.append(index)
+		_present_sides.append(1 if a.is_empty() else (-1 if b.is_empty() else 0))
 		if a.is_empty():
 			a = _collapsed(b)
 		if b.is_empty():
@@ -119,7 +181,122 @@ func rebuild() -> void:
 		_b.append(b)
 		_width_a.append(width_a)
 		_width_b.append(width_b)
+	if missing_curve_mode == MissingCurveMode.GROW_FROM_ANCHOR:
+		_resolve_anchor_growth()
 	_publish()
+
+## Resolves parent entries, anchor sample positions and growth windows. Parents precede
+## children; unresolved paths keep the centroid collapse.
+func _resolve_anchor_growth() -> void:
+	var count := _a.size()
+	var entries := {}
+	for entry in count:
+		entries[_curve_indices[entry]] = entry
+	_anchor_parents.resize(count)
+	_anchor_parents.fill(-1)
+	_anchor_samples.resize(count)
+	_anchor_samples.fill(0.0)
+	_anchor_windows.resize(count)
+	_anchor_windows.fill(Vector2.ZERO)
+	var starts := PackedFloat32Array()
+	starts.resize(count)
+	var schedule_end := 0.0
+	for entry in count:
+		var side := _present_sides[entry]
+		var anchors := destination_anchors if side > 0 else source_anchors
+		if side == 0 or anchors == null:
+			continue
+		var parent_curve := anchors.get_parent_index(_curve_indices[entry])
+		if parent_curve < 0 or not entries.has(parent_curve):
+			continue
+		var parent: int = entries[parent_curve]
+		if parent >= entry or _present_sides[parent] == -side:
+			continue
+		var fraction := anchors.get_fraction(_curve_indices[entry])
+		_anchor_parents[entry] = parent
+		_anchor_samples[entry] = fraction * samples
+		if _anchor_parents[parent] < 0:
+			starts[entry] = fraction * ANCHOR_STAGGER
+		else:
+			starts[entry] = starts[parent] + anchor_growth_duration * fraction + ANCHOR_CHILD_GAP
+		schedule_end = maxf(schedule_end, starts[entry] + anchor_growth_duration)
+	var span := anchor_growth_window.y - anchor_growth_window.x
+	for entry in count:
+		if _anchor_parents[entry] >= 0:
+			var first := anchor_growth_window.x + starts[entry] / schedule_end * span
+			var last := anchor_growth_window.x + (starts[entry] + anchor_growth_duration) / schedule_end * span
+			_anchor_windows[entry] = Vector2(first, maxf(last, first + 0.0001))
+
+## Returns per-entry [points, widths] for anchored paths at the current progress, and an
+## empty array for paths that use the regular interpolation.
+func _anchored_frame() -> Array:
+	var result := []
+	var shapes: Array[PackedVector2Array] = []
+	for entry in _a.size():
+		var parent := _anchor_parents[entry]
+		if parent < 0:
+			var current := PackedVector2Array()
+			for i in _a[entry].size():
+				current.append(_a[entry][i].lerp(_b[entry][i], progress))
+			shapes.append(current)
+			result.append([])
+			continue
+		var grows_forward := _present_sides[entry] > 0
+		var authored := _b[entry] if grows_forward else _a[entry]
+		var authored_widths := _width_b[entry] if grows_forward else _width_a[entry]
+		var parent_authored := _b[parent] if grows_forward else _a[parent]
+		var anchor := _anchor_samples[entry]
+		var anchor_now := _sample_polyline(shapes[parent], anchor)
+		var anchor_authored := _sample_polyline(parent_authored, anchor)
+		var turn := 0.0
+		if anchor_follow_rotation:
+			var tangent_now := _polyline_tangent(shapes[parent], anchor)
+			var tangent_authored := _polyline_tangent(parent_authored, anchor)
+			if tangent_now != Vector2.ZERO and tangent_authored != Vector2.ZERO:
+				turn = tangent_authored.angle_to(tangent_now)
+		var shaped := PackedVector2Array()
+		for point in authored:
+			shaped.append(anchor_now + (point - anchor_authored).rotated(turn))
+		shapes.append(shaped)
+		var window := _anchor_windows[entry]
+		var growth := smoothstep(window.x, window.y, progress if grows_forward else 1.0 - progress)
+		var fade := smoothstep(0.0, ANCHOR_WIDTH_RAMP, growth)
+		var widths := PackedFloat32Array()
+		for i in samples + 1:
+			var cursor := growth * i
+			var left := mini(int(cursor), samples - 1)
+			widths.append(lerpf(authored_widths[left], authored_widths[left + 1], cursor - left) * fade)
+		result.append([_clip_polyline(shaped, growth), widths])
+	return result
+
+## Point at a fractional sample position of a samples + 1 point polyline.
+func _sample_polyline(points: PackedVector2Array, cursor: float) -> Vector2:
+	var left := clampi(int(cursor), 0, points.size() - 2)
+	return points[left].lerp(points[left + 1], clampf(cursor - left, 0.0, 1.0))
+
+## Unit tangent at a fractional sample position; zero for degenerate spans.
+func _polyline_tangent(points: PackedVector2Array, cursor: float) -> Vector2:
+	var left := clampi(int(cursor), 0, points.size() - 2)
+	var tangent := points[left + 1] - points[left]
+	return tangent.normalized() if tangent.length_squared() > 0.000001 else Vector2.ZERO
+
+## The first amount of a polyline's arc length, as samples + 1 evenly spaced points
+## starting at its first point.
+func _clip_polyline(points: PackedVector2Array, amount: float) -> PackedVector2Array:
+	var cumulative := PackedFloat32Array([0.0])
+	for i in range(1, points.size()):
+		cumulative.append(cumulative[i - 1] + points[i - 1].distance_to(points[i]))
+	var target := cumulative[-1] * amount
+	var result := PackedVector2Array()
+	var segment := 0
+	for i in samples + 1:
+		var distance := target * float(i) / samples
+		while segment < points.size() - 2 and cumulative[segment + 1] < distance:
+			segment += 1
+		var length := cumulative[segment + 1] - cumulative[segment]
+		var t := (distance - cumulative[segment]) / length if length > 0.00001 else 0.0
+		result.append(points[segment].lerp(points[segment + 1], clampf(t, 0.0, 1.0)))
+	return result
 
 func _sample(curve: Curve2D) -> PackedVector2Array:
 	var result := PackedVector2Array()
@@ -197,7 +374,9 @@ func _publish() -> void:
 	var curves: Array[Curve2D] = []
 	var widths := PackedFloat32Array()
 	var profiles: Array[Curve] = []
+	var anchored: Array = _anchored_frame() if missing_curve_mode == MissingCurveMode.GROW_FROM_ANCHOR and _anchor_parents.size() == _a.size() else []
 	for index in _a.size():
+		var grown: Array = anchored[index] if index < anchored.size() else []
 		var curve := Curve2D.new()
 		curve.bake_interval = 2.0
 		var actual_widths := PackedFloat32Array()
@@ -206,13 +385,13 @@ func _publish() -> void:
 		var distance := 0.0
 		var previous := Vector2.ZERO
 		for i in _a[index].size():
-			var point := _a[index][i].lerp(_b[index][i], progress)
+			var point: Vector2 = grown[0][i] if not grown.is_empty() else _a[index][i].lerp(_b[index][i], progress)
 			curve.add_point(point)
 			if i > 0:
 				distance += previous.distance_to(point)
 			previous = point
 			distances.append(distance)
-			var actual_width := lerpf(_width_a[index][i], _width_b[index][i], progress)
+			var actual_width: float = grown[1][i] if not grown.is_empty() else lerpf(_width_a[index][i], _width_b[index][i], progress)
 			actual_widths.append(actual_width)
 			max_width = maxf(max_width, actual_width)
 		curves.append(curve)

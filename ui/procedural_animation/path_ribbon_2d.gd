@@ -79,7 +79,8 @@ func _mark_dirty() -> void: _render_dirty = true
 func _process(_delta: float) -> void: flush()
 func flush() -> void:
 	if not _render_dirty: return
-	var paths: Array[Curve2D] = definition.get_curves() if definition != null else []
+	var paths: Array[Curve2D] = []
+	if definition != null: paths = definition.get_curves()
 	var topology_changed := paths.size() != _states.size()
 	if not topology_changed:
 		for i in paths.size():

@@ -1,0 +1,23 @@
+[gd_scene format=3 uid="uid://sjmfbnlfx2qa"]
+
+[ext_resource type="Script" uid="uid://cndj31krafna7" path="res://addons/gdbase/ui/procedural_animation/examples/path_morph_anchor_grow_demo.gd" id="1_80fxd"]
+[ext_resource type="Script" uid="uid://cgtx20cjhm2mv" path="res://addons/gdbase/ui/procedural_animation/path_morph.gd" id="2_idt73"]
+[ext_resource type="Script" uid="uid://hqxybkrac0t4" path="res://addons/gdbase/ui/procedural_animation/path_ribbon_2d.gd" id="3_lgvij"]
+
+[node name="PathMorphAnchorGrowDemo" type="Node2D" unique_id=880884075]
+script = ExtResource("1_80fxd")
+
+[node name="Background" type="ColorRect" parent="." unique_id=4594975]
+offset_right = 1280.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.03, 0.04, 0.07, 1)
+
+[node name="Morph" type="Node" parent="." unique_id=268796148]
+script = ExtResource("2_idt73")
+missing_curve_mode = 1
+anchor_follow_rotation = true
+
+[node name="Ribbon" type="Node2D" parent="." unique_id=2090155638]
+script = ExtResource("3_lgvij")
+color = Color(0.5, 0.9, 1, 1)

@@ -41,6 +41,8 @@ func generate() -> PathDefinition:
 
 ## Metadata describes parent relationships for authoring and diagnostics.
 ## Parents always precede children; attachment_indices index the parent's vertices.
+## anchors is a PathAnchorSet with the same parents and each attachment's arc-length fraction
+## on its parent, ready for PathMorph.destination_anchors.
 func generate_with_metadata() -> Dictionary:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
@@ -48,6 +50,7 @@ func generate_with_metadata() -> Dictionary:
 	var curves: Array[Curve2D] = []
 	var parents := PackedInt32Array([-1])
 	var attachments := PackedInt32Array([-1])
+	var fractions := PackedFloat32Array([0.0])
 	var depths := PackedInt32Array([0])
 	var a := _safe_point(start_point)
 	var b := _safe_point(end_point)
@@ -85,10 +88,25 @@ func generate_with_metadata() -> Dictionary:
 				curves.append(_bolt(origin, tip, BoltProfile.new(maxi(1, subdivisions - depth - 1), displacement, decay), rng))
 				parents.append(parent_index)
 				attachments.append(index)
+				fractions.append(_vertex_fraction(parent, index))
 				depths.append(depth + 1)
 		parent_index += 1
 	definition.set_curves(curves)
-	return {"definition": definition, "parents": parents, "attachment_indices": attachments, "depths": depths}
+	var anchors := PathAnchorSet.new()
+	anchors.parents = parents
+	anchors.fractions = fractions
+	return {"definition": definition, "parents": parents, "attachment_indices": attachments, "depths": depths, "anchors": anchors}
+
+## Arc-length fraction of a vertex along a polyline curve.
+static func _vertex_fraction(curve: Curve2D, vertex: int) -> float:
+	var total := 0.0
+	var before := 0.0
+	for i in range(1, curve.point_count):
+		var length := curve.get_point_position(i - 1).distance_to(curve.get_point_position(i))
+		total += length
+		if i <= vertex:
+			before += length
+	return before / total if total > 0.000001 else 0.0
 
 func _bolt(a: Vector2, b: Vector2, profile: BoltProfile, rng: RandomNumberGenerator) -> Curve2D:
 	var subdivisions := profile.subdivisions
