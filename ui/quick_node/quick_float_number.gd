@@ -265,15 +265,17 @@ func emit_delta(amount: Variant, options: Dictionary = {}) -> Label:
 		return null
 	_prune_active()
 	var label: Label
+	var created := false
 	if _active.size() >= max_active:
 		label = _active.pop_front().label
 	else:
 		label = Label.new()
-		add_child(label)
+		created = true
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.rotation = 0.0
 	label.self_modulate = Color.WHITE
 	label.text = ("+0" if zero_direction > 0 else "-0") if amount == 0 else format_delta(amount)
+	label.begin_bulk_theme_override()
 	label.add_theme_font_size_override("font_size", clampi(int(options.get("font_size", font_size)), 8, 160))
 	label.add_theme_color_override("font_color", options.get("color", gain_color if amount > 0 or zero_direction > 0 else loss_color))
 	label.add_theme_color_override("font_outline_color", outline_color)
@@ -282,6 +284,8 @@ func emit_delta(amount: Variant, options: Dictionary = {}) -> Label:
 		label.add_theme_font_override("font", font)
 	else:
 		label.remove_theme_font_override("font")
+	label.end_bulk_theme_override()
+	if created: add_child(label)
 	label.reset_size()
 	var ratio := label_anchor_ratio.clamp(Vector2.ZERO, Vector2.ONE) if label_anchor_ratio.is_finite() else Vector2(0.5, 0.0)
 	label.pivot_offset = label.size * ratio
