@@ -1,3 +1,4 @@
+@tool
 class_name PixelProjectileHead2D
 extends Node2D
 ## Pixel head presentation consumes positions and projected velocities in one canvas's

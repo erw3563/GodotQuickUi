@@ -1,3 +1,4 @@
+@tool
 class_name PixelProjectileTrail2D
 extends Node2D
 ## An independent effects root owns this distance-sampled world-space trail.

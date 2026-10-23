@@ -1,3 +1,4 @@
+@tool
 class_name PixelImpactBurst2D
 extends Node2D
 ## The authored Particles child owns native fragment size, motion, color and lifetime.

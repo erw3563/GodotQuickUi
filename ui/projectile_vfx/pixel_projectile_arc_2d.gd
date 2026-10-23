@@ -1,3 +1,4 @@
+@tool
 class_name PixelProjectileArc2D
 extends Node2D
 ## 地面世界坐标与归一化进度驱动原生弹体及投影，调用方持有飞行时钟。

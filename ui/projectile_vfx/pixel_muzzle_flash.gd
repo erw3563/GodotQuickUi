@@ -1,3 +1,4 @@
+@tool
 class_name PixelMuzzleFlash2D
 extends Node2D
 ## Replayable directional flash with a finite visual lifetime.
