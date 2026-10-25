@@ -1,6 +1,6 @@
 @tool
 class_name PixelProjectileTrail2D
-extends Node2D
+extends ProjectileVisualEffect2D
 ## An independent effects root owns this distance-sampled world-space trail.
 ## begin/sample consume positions; _process or advance owns the aging clock.
 ## sample delta interpolates birth times along each supplied movement segment.
@@ -197,3 +197,23 @@ func _notification(what: int) -> void:
 		reset()
 	elif what == NOTIFICATION_EXIT_TREE:
 		reset()
+
+func start_effect(world_position: Vector2, _direction: Vector2, _seed: int = 0) -> void:
+	auto_free = false
+	begin(world_position)
+	set_process(false)
+
+func follow_effect(world_position: Vector2, _velocity: Vector2, delta: float) -> void:
+	sample(world_position, delta)
+	set_process(false)
+
+func advance_effect(delta: float) -> void:
+	advance(delta)
+	set_process(false)
+
+func stop_effect() -> void:
+	stop_emitting()
+	set_process(false)
+
+func effect_finished() -> bool:
+	return not emitting and get_active_count() == 0

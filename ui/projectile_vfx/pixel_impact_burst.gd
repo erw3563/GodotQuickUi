@@ -1,6 +1,6 @@
 @tool
 class_name PixelImpactBurst2D
-extends Node2D
+extends ProjectileVisualEffect2D
 ## The authored Particles child owns native fragment size, motion, color and lifetime.
 ## This wrapper triggers and clocks the native burst and its immediate flash.
 signal finished
@@ -152,3 +152,15 @@ func _notification(what: int) -> void:
 		reset()
 	elif what == NOTIFICATION_EXIT_TREE:
 		reset()
+
+func start_effect(world_position: Vector2, direction: Vector2, seed_value: int = 0) -> void:
+	auto_free = false
+	play(world_position, direction, seed_value)
+	set_process(false)
+
+func advance_effect(delta: float) -> void:
+	advance(delta)
+	set_process(false)
+
+func effect_finished() -> bool:
+	return not active

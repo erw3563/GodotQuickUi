@@ -1,6 +1,6 @@
 @tool
 class_name PixelMuzzleFlash2D
-extends Node2D
+extends ProjectileVisualEffect2D
 ## Replayable directional flash with a finite visual lifetime.
 signal finished
 @export var core_color := Color("fff5dc")
@@ -83,3 +83,15 @@ func _notification(what: int) -> void:
 		reset()
 	elif what == NOTIFICATION_EXIT_TREE:
 		reset()
+
+func start_effect(world_position: Vector2, direction: Vector2, _seed: int = 0) -> void:
+	auto_free = false
+	play(world_position, direction)
+	set_process(false)
+
+func advance_effect(delta: float) -> void:
+	advance(delta)
+	set_process(false)
+
+func effect_finished() -> bool:
+	return not active

@@ -1,6 +1,6 @@
 @tool
 class_name PixelProjectileHead2D
-extends Node2D
+extends ProjectileVisualEffect2D
 ## Pixel head presentation consumes positions and projected velocities in one canvas's
 ## world space. Drawing cancels parent scale/rotation; Camera2D transforms the result.
 
@@ -81,3 +81,16 @@ func _notification(what: int) -> void:
 		reset()
 	elif what == NOTIFICATION_EXIT_TREE:
 		reset()
+
+func start_effect(world_position: Vector2, direction: Vector2, _seed: int = 0) -> void:
+	play(world_position, direction)
+	set_process(false)
+
+func follow_effect(world_position: Vector2, velocity: Vector2, _delta: float) -> void:
+	set_motion(world_position, velocity)
+
+func stop_effect() -> void:
+	stop()
+
+func effect_finished() -> bool:
+	return not active
