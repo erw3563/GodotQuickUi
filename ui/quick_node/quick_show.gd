@@ -58,7 +58,7 @@ func play() -> bool:
 	if control == null:
 		return false
 	var shown := target_state == TargetState.SHOW
-	if not is_animating() and shown == control.visible:
+	if not is_animating() and shown == control.visible and (not shown or is_equal_approx(control.modulate.a, 1.0)):
 		return false
 	_set_target(shown)
 	return true
@@ -113,6 +113,11 @@ func _play_fade(shown: bool) -> void:
 		if not shown:
 			_set_target_instantly(false)
 		_emit_finished())
+
+
+## 中断显隐演出并保留当前表现，供宿主切换播放方向。
+func interrupt() -> void:
+	_kill_fade_tween()
 
 
 func _kill_fade_tween() -> void:

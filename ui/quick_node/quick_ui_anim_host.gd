@@ -175,6 +175,7 @@ func _ready() -> void:
 
 
 func _exit_tree() -> void:
+	set_editor_interaction_enabled(false)
 	preview_stop()
 	_disconnect_play_button()
 	_cancel_tree_playback()
@@ -362,13 +363,25 @@ func get_performances() -> Array:
 
 # ---------- 树序时间线播放 ----------
 
+## 编辑器交互副本的播放许可，由组装根在演出节点就绪后设置。
+var _editor_interaction_enabled := false
+
+## 组装根为编辑器交互副本显式启用播放；启用时演出节点已完成装配，终态由交互界面持有。
+func set_editor_interaction_enabled(enabled: bool) -> void:
+	if not Engine.is_editor_hint() or _editor_interaction_enabled == enabled: return
+	_editor_interaction_enabled = enabled
+	if not enabled: _cancel_tree_playback()
+	for node in _collect_performance_nodes():
+		var method := &"_begin_host_preview_session" if enabled else &"_end_host_preview_session"
+		if node.has_method(method): node.call(method)
+
 ## 播放一趟树序时间线：按直接子节点在树中的顺序依次执行，每步等上一步完成再走
 ## 下一步。步骤为演出组件（实现播放契约的直接子节点）或同播组（组内演出子节点
 ## 同帧齐播）；交互件与未知节点只占结构位置不占时间线。已处终态的步骤无操作即
 ## 完成；完成时刻发 [signal finished]。重播触发新代次、旧序列剩余步骤不再播放。
 func play() -> void:
-	# 编辑器空闲不起播；整树预览会话期间放行（见文末预览区）。
-	if Engine.is_editor_hint() and not _preview.is_active():
+	# 编辑器显式交互副本与整树预览共用树序执行器。
+	if Engine.is_editor_hint() and not _preview.is_active() and not _editor_interaction_enabled:
 		return
 	_cancel_tree_playback()
 	_run_tree_playback(_play_generation)
@@ -394,9 +407,8 @@ func _run_tree_playback(generation: int) -> void:
 
 
 func _emit_playback_finished(interrupted: bool) -> void:
-	# 完成信号仅在运行时发射——编辑器空闲不外发；整树预览会话期间放行（预览编排
-	# 的有限等待依赖完成信号，见预览规范）。
-	if Engine.is_editor_hint() and not _preview.is_active():
+	# 运行时、编辑器交互副本和整树预览均以完成信号收尾。
+	if Engine.is_editor_hint() and not _preview.is_active() and not _editor_interaction_enabled:
 		return
 	finished.emit(interrupted)
 
