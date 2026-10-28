@@ -1,9 +1,8 @@
 @tool
+@abstract
 class_name PixelProjectileTrail2D
 extends ProjectileVisualEffect2D
-## An independent effects root owns this distance-sampled world-space trail.
-## begin/sample consume positions; _process or advance owns the aging clock.
-## sample delta interpolates birth times along each supplied movement segment.
+## 世界空间尾迹的采样、距离裁剪与残留时钟；派生表现消费轨迹与出生时刻绘制。
 
 signal finished
 @export var trail_color := Color("ce894f")
@@ -158,37 +157,6 @@ func get_point_ages() -> PackedFloat32Array:
 
 func get_active_count() -> int:
 	return _points.size()
-
-func _draw() -> void:
-	if _points.is_empty() or absf(global_transform.determinant()) < 0.000001:
-		return
-	var points := _points.duplicate()
-	var births := _births.duplicate()
-	if emitting and points[-1].distance_squared_to(_previous) > 0.000001:
-		points.append(_previous)
-		births.append(_clock)
-	var inverse := global_transform.affine_inverse()
-	var distance_to_tip := 0.0
-	for i in range(points.size() - 2, -1, -1):
-		var a := points[i]
-		var b := points[i + 1]
-		var segment := b - a
-		# Segments of at least 0.1 native pixel keep float32 polygon triangulation stable.
-		if segment.length_squared() < 0.01:
-			continue
-		var normal := segment.normalized().orthogonal()
-		var segment_length := segment.length()
-		var age_a := clampf((_clock - births[i]) / clampf(lifetime, 0.02, 1.0), 0.0, 1.0)
-		var age_b := clampf((_clock - births[i + 1]) / clampf(lifetime, 0.02, 1.0), 0.0, 1.0)
-		var taper_a := 1.0 - clampf((distance_to_tip + segment_length) / clampf(max_length, 2.0, 96.0), 0.0, 1.0)
-		var taper_b := 1.0 - clampf(distance_to_tip / clampf(max_length, 2.0, 96.0), 0.0, 1.0)
-		var wa := maxf(0.05, width * 0.5 * taper_a * (1.0 - age_a))
-		var wb := maxf(0.05, width * 0.5 * taper_b * (1.0 - age_b))
-		var polygon := PackedVector2Array([inverse * (a + normal * wa), inverse * (b + normal * wb), inverse * (b - normal * wb), inverse * (a - normal * wa)])
-		var color := trail_color
-		color.a *= (1.0 - age_a) * 0.85
-		draw_colored_polygon(polygon, color)
-		distance_to_tip += segment_length
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSFORM_CHANGED:

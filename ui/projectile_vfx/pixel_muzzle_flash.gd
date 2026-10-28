@@ -1,7 +1,8 @@
 @tool
+@abstract
 class_name PixelMuzzleFlash2D
 extends ProjectileVisualEffect2D
-## Replayable directional flash with a finite visual lifetime.
+## 方向闪光的重播、结束与外部时钟；派生表现消费方向、颜色和尺寸绘制。
 signal finished
 @export var core_color := Color("fff5dc")
 @export var edge_color := Color("d99b56")
@@ -56,25 +57,6 @@ func _process(delta: float) -> void:
 
 func get_active_count() -> int:
 	return int(active)
-
-func _draw() -> void:
-	if not active or absf(global_transform.determinant()) < 0.000001:
-		return
-	var progress := clampf(_age / clampf(lifetime, 0.02, 0.3), 0.0, 1.0)
-	var length_now := clampf(length_px, 2.0, 16.0) * (1.0 - progress * 0.6)
-	var width_now := clampf(width_px, 1.0, 10.0) * (1.0 - progress)
-	if width_now < 0.1:
-		return # Sub-pixel flash geometry completes its visible interval.
-	var normal := _direction.orthogonal()
-	var inverse := global_transform.affine_inverse()
-	var points := PackedVector2Array([inverse * (_origin - _direction), inverse * (_origin + _direction * length_now * 0.35 + normal * width_now * 0.5), inverse * (_origin + _direction * length_now), inverse * (_origin + _direction * length_now * 0.35 - normal * width_now * 0.5)])
-	var color := edge_color
-	color.a *= 1.0 - progress
-	draw_colored_polygon(points, color)
-	var core := PackedVector2Array([inverse * (_origin - normal * 0.6), inverse * (_origin + _direction * length_now * 0.75), inverse * (_origin + normal * 0.6)])
-	color = core_color
-	color.a *= 1.0 - progress
-	draw_colored_polygon(core, color)
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_TRANSFORM_CHANGED:

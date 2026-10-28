@@ -1,7 +1,0 @@
-[gd_scene load_steps=2 format=3]
-
-[ext_resource type="Script" path="res://addons/gdbase/ui/projectile_vfx/pixel_projectile_trail.gd" id="1"]
-
-[node name="PixelProjectileTrail2D" type="Node2D"]
-texture_filter = 1
-script = ExtResource("1")
