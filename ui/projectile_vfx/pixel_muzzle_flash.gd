@@ -1,7 +1,7 @@
 @tool
 @abstract
 class_name PixelMuzzleFlash2D
-extends ProjectileVisualEffect2D
+extends VisualEffect2D
 ## 方向闪光的重播、结束与外部时钟；派生表现消费方向、颜色和尺寸绘制。
 signal finished
 @export var core_color := Color("fff5dc")
@@ -74,6 +74,9 @@ func start_effect(world_position: Vector2, direction: Vector2, _seed: int = 0) -
 func advance_effect(delta: float) -> void:
 	advance(delta)
 	set_process(false)
+
+func effect_duration() -> float:
+	return clampf(lifetime, 0.02, 0.3)
 
 func effect_finished() -> bool:
 	return not active

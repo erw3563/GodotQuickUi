@@ -1,6 +1,6 @@
 @tool
 class_name PixelProjectileHead2D
-extends ProjectileVisualEffect2D
+extends VisualEffect2D
 ## Pixel head presentation consumes positions and projected velocities in one canvas's
 ## world space. Drawing cancels parent scale/rotation; Camera2D transforms the result.
 

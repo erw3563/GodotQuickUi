@@ -1,7 +1,7 @@
 @tool
 @abstract
 class_name PixelProjectileTrail2D
-extends ProjectileVisualEffect2D
+extends VisualEffect2D
 ## 世界空间尾迹的采样、距离裁剪与残留时钟；派生表现消费轨迹与出生时刻绘制。
 
 signal finished
@@ -182,6 +182,9 @@ func advance_effect(delta: float) -> void:
 func stop_effect() -> void:
 	stop_emitting()
 	set_process(false)
+
+func effect_duration() -> float:
+	return clampf(lifetime, 0.02, 1.0)
 
 func effect_finished() -> bool:
 	return not emitting and get_active_count() == 0
