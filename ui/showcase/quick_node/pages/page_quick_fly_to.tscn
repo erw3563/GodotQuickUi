@@ -60,19 +60,6 @@ layout_mode = 2
 focus_mode = 0
 text = "复位"
 
-[node name="Hint" type="Label" parent="." unique_id=75966450]
-layout_mode = 0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -84.0
-offset_right = 24.0
-offset_bottom = 24.0
-theme_override_font_sizes/font_size = 14
-text = "点「飞入并挂入」：源卡片飞到目的地中心后成为其子节点；「复位」归还父子关系并摆回起点。"
-autowrap_mode = 3
-
 [node name="AnimHost" type="Node" parent="." unique_id=927284119 node_paths=PackedStringArray("ui")]
 unique_name_in_owner = true
 script = ExtResource("2_wpy6x")

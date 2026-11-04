@@ -82,7 +82,6 @@ func clear_content() -> void:
 
 func add_layer(content: Control, depth: float = 0.0) -> void:
 	content_size = Vector2i(maxi(content_size.x, 2), maxi(content_size.y, 2))
-	assert(is_instance_valid(world_view), "Call after the component enters the scene tree.")
 	var view := SubViewport.new()
 	view.size = content_size
 	view.transparent_bg = true

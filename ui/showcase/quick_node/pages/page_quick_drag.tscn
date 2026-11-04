@@ -55,8 +55,7 @@ offset_top = 10.0
 offset_right = 14.0
 offset_bottom = 10.0
 theme_override_font_sizes/font_size = 15
-text = "自由拖拽
-（按住卡片任意位置）"
+text = "自由拖动"
 
 [node name="AbilityHost" type="Node" parent="FreeCard"]
 script = ExtResource("3_host")
@@ -104,16 +103,3 @@ script = ExtResource("2_glb1d")
 drag_mode = 1
 use_axis_range_limit = true
 horizontal_range_max_offset = 240.0
-
-[node name="Hint" type="Label" parent="." unique_id=217545356]
-layout_mode = 0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -64.0
-offset_right = -24.0
-offset_bottom = -24.0
-theme_override_font_sizes/font_size = 14
-text = "上方卡片可在舞台内自由拖动；下方细长卡只能水平拖且最多右移 240px（HORIZONTAL_ONLY + 区间限制）。抓取点不跳动。"
-autowrap_mode = 3

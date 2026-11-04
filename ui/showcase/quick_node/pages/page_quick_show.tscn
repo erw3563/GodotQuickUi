@@ -33,7 +33,7 @@ offset_top = 160.0
 offset_right = 360.0
 offset_bottom = 160.0
 focus_mode = 0
-text = "打开菜单（出现在鼠标处）"
+text = "打开菜单"
 
 [node name="Menu" type="Panel" parent="." unique_id=2036542846]
 unique_name_in_owner = true
@@ -71,19 +71,6 @@ offset_right = 16.0
 offset_bottom = 98.0
 focus_mode = 0
 text = "删除"
-
-[node name="Hint" type="Label" parent="." unique_id=1489651235]
-layout_mode = 0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -64.0
-offset_right = -24.0
-offset_bottom = -24.0
-theme_override_font_sizes/font_size = 14
-text = "点「打开菜单」在鼠标位置弹出小菜单（自动避免超出屏幕）；按 Q 收起。"
-autowrap_mode = 3
 
 [node name="EnterHost" type="Node" parent="." unique_id=1199755064 node_paths=PackedStringArray("ui")]
 unique_name_in_owner = true

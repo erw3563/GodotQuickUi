@@ -104,16 +104,3 @@ script = ExtResource("6_show")
 control = NodePath("../..")
 target_state = 1
 animation_duration = 0.0
-
-[node name="Hint" type="Label" parent="." unique_id=319422435]
-custom_minimum_size = Vector2(450, 0)
-layout_mode = 1
-offset_right = 427.0
-offset_bottom = 112.0
-theme_override_font_sizes/font_size = 14
-text = "QuickUiAnimHost
-1. 您可在编辑器的检查器中配置QuickUiAnimHost
-2. 您可调整的内容主要是生成的QuickUI节点
-3. 您可使用不同的QuickUi实现UI面板的不同功能
-3. 您可使用多个的QuickUi进行组合实现更加强大的功能"
-autowrap_mode = 3

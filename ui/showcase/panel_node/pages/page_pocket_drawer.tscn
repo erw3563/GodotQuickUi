@@ -66,19 +66,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 script = ExtResource("1_spmjb")
 
-[node name="Hint" type="Label" parent="." unique_id=186893074]
-layout_mode = 0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -64.0
-offset_right = -24.0
-offset_bottom = -24.0
-theme_override_font_sizes/font_size = 14
-text = "点击右上方小块 ↔ 展开背包格：真实尺寸与锚角随状态动画切换，收起块上绘制标题「包」。"
-autowrap_mode = 3
-
 [node name="Drawer" type="PanelContainer" parent="." unique_id=1006187242]
 unique_name_in_owner = true
 layout_mode = 0

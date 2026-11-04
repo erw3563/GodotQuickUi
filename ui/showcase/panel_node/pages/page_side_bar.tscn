@@ -89,19 +89,6 @@ layout_mode = 2
 focus_mode = 0
 text = "下"
 
-[node name="Hint" type="Label" parent="." unique_id=1056936544]
-layout_mode = 0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -64.0
-offset_right = -24.0
-offset_bottom = -24.0
-theme_override_font_sizes/font_size = 14
-text = "鼠标移到右侧边缘的收起条上展开、离开收起；下方按钮实时换贴边方向（LEFT/TOP/RIGHT/BOTTOM）。"
-autowrap_mode = 3
-
 [node name="SideBar" type="PanelContainer" parent="." unique_id=571750940]
 unique_name_in_owner = true
 layout_mode = 0

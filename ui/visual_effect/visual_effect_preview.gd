@@ -12,8 +12,6 @@ var _duration := 0.0
 func configure(host: Node2D, configuration: VisualEffectCue, positions: Dictionary, carrier_direction: Vector2, basis: Transform2D) -> String:
 	cue = configuration
 	playback = VisualEffectPlayback.new(host)
-	var reason := cue.validate_configuration()
-	if not reason.is_empty(): return reason
 	_duration = cue.duration()
 	_placement = cue.placement(positions, carrier_direction, basis)
 	return _placement.reason

@@ -53,8 +53,7 @@ layout_mode = 0
 offset_right = 270.0
 offset_bottom = 45.0
 theme_override_font_sizes/font_size = 15
-text = "QuickMask 覆盖在这张卡片上
-（ui 指向 Stage，矩形自动跟随）"
+text = "遮罩"
 
 [node name="Mask" type="TextureRect" parent="Stage" unique_id=2068691301]
 unique_name_in_owner = true
@@ -95,17 +94,3 @@ unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "换图案"
-
-[node name="Hint" type="Label" parent="." unique_id=782184550]
-layout_mode = 1
-anchors_preset = 12
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -64.0
-offset_right = -24.0
-offset_bottom = -24.0
-theme_override_font_sizes/font_size = 14
-text = "QuickMask 是 TextureRect 本体即视觉的遮罩：灰度遮罩图案决定显隐形状，progress 是被驱动的进度轴，检查器上的 target_progress 声明目标端（0 完全隐藏 / 1 完全显示），统一播放契约 play() 从当前进度到达目标、已处目标端时先归位到另一端点再起播——双向由两个目标端不同的实例分属两个宿主表达。内置 8 种图案（set_pattern / PATTERNS），也可自定义 mask_texture 与 content_texture（图片显隐）。设置 ui 后遮罩矩形自动对齐并持续跟随目标（本页指向 Stage；位移与缩放都贴合），为空时自呈现；挂进 QuickUiAnimHost 即成为树序时间线的一个演出步骤，目标为完全显示时装载期先瞬时铺隐藏。"
-autowrap_mode = 3

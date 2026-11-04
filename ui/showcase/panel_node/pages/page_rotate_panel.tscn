@@ -49,12 +49,6 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 19
 text = "RotatePanel"
 
-[node name="Note" type="Label" parent="RotatePanel/Content" unique_id=1397388258]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "交互触发一次旋转晃动：依次停靠序列各角后收常态角
-（播放中再触发从头重播）"
-
 [node name="Toolbar" type="HBoxContainer" parent="." unique_id=1645648383]
 layout_mode = 0
 offset_left = 23.0

@@ -116,16 +116,6 @@ theme_override_colors/font_color = Color(0.9, 0.94, 1, 1)
 theme_override_font_sizes/font_size = 28
 text = "Every place has a character"
 
-[node name="Subtitle" type="Label" parent="HUD" unique_id=1887997974]
-layout_mode = 0
-offset_left = 32.0
-offset_top = 91.0
-offset_right = 632.0
-offset_bottom = 113.0
-theme_override_colors/font_color = Color(0.66, 0.75, 0.85, 1)
-theme_override_font_sizes/font_size = 13
-text = "Bud · Seal · Doorway · Stone  /  Per-level texture & scene overrides"
-
 [node name="Return" type="Button" parent="HUD" unique_id=1303207995]
 layout_mode = 0
 offset_left = 873.0
@@ -162,36 +152,6 @@ theme_override_colors/font_color = Color(0.66, 0.75, 0.85, 1)
 theme_override_font_sizes/font_size = 12
 text = "Underline: selected   /   Bookmark: current"
 
-[node name="Status" type="Label" parent="HUD" unique_id=1372040428]
-layout_mode = 0
-offset_left = 32.0
-offset_top = 619.0
-offset_right = 822.0
-offset_bottom = 641.0
-theme_override_colors/font_color = Color(0.48, 0.69, 0.78, 1)
-theme_override_font_sizes/font_size = 12
-text = "EXPLORE  /  Select a level to reveal its panel"
-
-[node name="Help" type="Label" parent="HUD" unique_id=1409102705]
-layout_mode = 0
-offset_left = 32.0
-offset_top = 650.0
-offset_right = 812.0
-offset_bottom = 674.0
-theme_override_colors/font_color = Color(0.66, 0.75, 0.85, 1)
-theme_override_font_sizes/font_size = 13
-text = "Drag a level or its panel  ·  Drag empty space to pan  ·  Scroll to zoom"
-
-[node name="Scope" type="Label" parent="HUD" unique_id=1419130148]
-layout_mode = 0
-offset_left = 32.0
-offset_top = 686.0
-offset_right = 722.0
-offset_bottom = 704.0
-theme_override_colors/font_color = Color(0.35, 0.45, 0.59, 1)
-theme_override_font_sizes/font_size = 10
-text = "PRESENTATION DEMO   /   No gameplay or progression logic"
-
 [node name="ZoomOut" type="Button" parent="HUD" unique_id=383189713]
 layout_mode = 0
 offset_left = 925.0
@@ -227,16 +187,6 @@ theme_override_styles/normal = SubResource("Button")
 theme_override_styles/pressed = SubResource("Accent")
 theme_override_styles/hover = SubResource("Hover")
 text = "+"
-
-[node name="CaptureBadge" type="Label" parent="." unique_id=1590758355]
-layout_mode = 0
-offset_left = 887.0
-offset_top = 686.0
-offset_right = 1087.0
-offset_bottom = 706.0
-theme_override_colors/font_color = Color(0.55, 0.73, 0.8, 1)
-theme_override_font_sizes/font_size = 10
-text = "LIVE INPUT"
 
 [node name="SmallPanel" type="Panel" parent="." unique_id=1406972217]
 visible = false
@@ -285,8 +235,6 @@ offset_right = 248.0
 offset_bottom = 140.0
 theme_override_colors/font_color = Color(0.66, 0.75, 0.85, 1)
 theme_override_font_sizes/font_size = 12
-text = "Drag this panel to move its level.
-Connected stars will follow."
 
 [node name="ContentSlot" type="Control" parent="SmallPanel" unique_id=1901786294]
 anchors_preset = 0
@@ -307,7 +255,7 @@ theme_override_font_sizes/font_size = 13
 theme_override_styles/normal = SubResource("Accent")
 theme_override_styles/pressed = SubResource("Accent")
 theme_override_styles/hover = SubResource("Hover")
-text = "Open detail slot  →"
+text = "View details"
 
 [node name="Close" type="Button" parent="SmallPanel" unique_id=1086304940]
 layout_mode = 0
@@ -339,7 +287,7 @@ offset_right = 457.0
 offset_bottom = 44.0
 theme_override_colors/font_color = Color(0.51, 0.75, 0.8, 1)
 theme_override_font_sizes/font_size = 11
-text = "EXTENSION SLOT   /   LEVEL DETAILS"
+text = "LEVEL DETAILS"
 
 [node name="Title" type="Label" parent="LargePanel" unique_id=1609426324]
 layout_mode = 0
@@ -358,37 +306,6 @@ offset_top = 115.0
 offset_right = 469.0
 offset_bottom = 288.0
 theme_override_styles/panel = SubResource("Slot")
-
-[node name="Placeholder" type="Label" parent="LargePanel/ContentSlot" unique_id=526034909]
-layout_mode = 0
-offset_left = 20.0
-offset_top = 38.0
-offset_right = 428.0
-offset_bottom = 66.0
-theme_override_colors/font_color = Color(0.75, 0.83, 0.93, 1)
-theme_override_font_sizes/font_size = 17
-text = "Your battle, event or introduction UI"
-
-[node name="Contract" type="Label" parent="LargePanel/ContentSlot" unique_id=1918993462]
-layout_mode = 0
-offset_left = 20.0
-offset_top = 84.0
-offset_right = 427.0
-offset_bottom = 134.0
-theme_override_colors/font_color = Color(0.66, 0.75, 0.85, 1)
-theme_override_font_sizes/font_size = 12
-text = "Attach your own scene here.
-This example emits a request and carries no game logic."
-
-[node name="Hint" type="Label" parent="LargePanel" unique_id=774948481]
-layout_mode = 0
-offset_left = 27.0
-offset_top = 311.0
-offset_right = 392.0
-offset_bottom = 335.0
-theme_override_colors/font_color = Color(0.66, 0.75, 0.85, 1)
-theme_override_font_sizes/font_size = 12
-text = "Opened by the small-panel button only."
 
 [node name="Close" type="Button" parent="LargePanel" unique_id=1435039888]
 layout_mode = 0

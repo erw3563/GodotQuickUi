@@ -96,16 +96,3 @@ unique_name_in_owner = true
 script = ExtResource("4_popout")
 ui = NodePath("../../TargetCard")
 target_ratio = Vector2(0.5, 1.5)
-
-[node name="Hint" type="Label" parent="." unique_id=1011534653]
-layout_mode = 0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -64.0
-offset_right = -24.0
-offset_bottom = -24.0
-theme_override_font_sizes/font_size = 14
-text = "选贴合点与离场端点后点「弹出/收回」：卡片从屏下飞入屏幕中心，再从当前位置飞出到所选屏外端点。"
-autowrap_mode = 3

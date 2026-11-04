@@ -45,8 +45,7 @@ offset_top = 10.0
 offset_right = 14.0
 offset_bottom = 10.0
 theme_override_font_sizes/font_size = 15
-text = "QuickZoom × QuickWobble 宿主
-（普通 Panel，缩放与晃动叠加）"
+text = "弹出"
 
 [node name="EnterHost" type="Node" parent="HostCard"]
 unique_name_in_owner = true
@@ -104,19 +103,6 @@ unique_name_in_owner = true
 layout_mode = 2
 focus_mode = 0
 text = "换晃动方向"
-
-[node name="Hint" type="Label" parent="." unique_id=862184066]
-layout_mode = 0
-anchor_top = 1.0
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_left = 24.0
-offset_top = -64.0
-offset_right = -24.0
-offset_bottom = -24.0
-theme_override_font_sizes/font_size = 14
-text = "QuickZoom 只动 scale/pivot，QuickWobble 只动 rotation——两者互不认识；入场宿主的同播组把「放大展开」与「晃动一次」同帧齐播、全部完成该步才结束，离场宿主缩回收起端（BACK 曲线过冲后恰好归零）；「换晃动方向」翻转序列各角符号。"
-autowrap_mode = 3
 
 [connection signal="pressed" from="Toolbar/ButtonExpand" to="HostCard/EnterHost" method="play"]
 [connection signal="pressed" from="Toolbar/ButtonCollapse" to="HostCard/ExitHost" method="play"]

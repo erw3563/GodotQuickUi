@@ -53,12 +53,6 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 19
 text = "ZoomPanel"
 
-[node name="Note" type="Label" parent="ZoomPanel/Content" unique_id=1168973716]
-layout_mode = 2
-theme_override_font_sizes/font_size = 14
-text = "入场自原点放大
-收起缩回原点并淡出"
-
 [node name="Toolbar" type="HBoxContainer" parent="." unique_id=398619424]
 layout_mode = 0
 offset_top = 581.0

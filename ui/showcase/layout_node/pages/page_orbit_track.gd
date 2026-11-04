@@ -137,4 +137,4 @@ func _on_toggle_first_card_visible() -> void:
 
 
 func _update_hide_button_text(first_visible: bool) -> void:
-	_hide_button.text = "隐藏首卡（仍占槽位）" if first_visible else "恢复首卡显示"
+	_hide_button.text = "隐藏首卡" if first_visible else "恢复首卡显示"
