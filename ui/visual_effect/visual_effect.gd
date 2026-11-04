@@ -1,6 +1,6 @@
 @tool
 class_name VisualEffect2D
-extends Node2D
+extends NativeAnimationActor
 ## 特效预制的统一手动播放接口；素材、粒子与动画由预制自身持有。
 ## 播放拥有者负责时钟、实例释放和飞行阶段的运动采样。
 

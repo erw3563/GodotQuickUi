@@ -76,3 +76,4 @@ func clear() -> void:
 	_active.clear()
 	_following.clear()
 	_serial = 0
+	_serial = 0

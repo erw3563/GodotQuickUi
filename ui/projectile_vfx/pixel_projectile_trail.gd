@@ -1,10 +1,9 @@
 @tool
 @abstract
 class_name PixelProjectileTrail2D
-extends VisualEffect2D
+extends NativeAnimationRenderer
 ## 世界空间尾迹的采样、距离裁剪与残留时钟；派生表现消费轨迹与出生时刻绘制。
 
-signal finished
 @export var trail_color := Color("ce894f")
 @export_range(0.5, 8.0, 0.5) var width := 2.0
 @export_range(0.5, 8.0, 0.5) var sample_spacing := 2.0
@@ -12,7 +11,6 @@ signal finished
 @export_range(0.02, 1.0, 0.01) var lifetime := 0.14
 @export_range(2, 128, 1) var max_points := 64
 @export_range(8.0, 512.0, 1.0) var teleport_threshold := 96.0
-@export var auto_free := false
 
 var emitting := false
 var _points := PackedVector2Array()
@@ -21,24 +19,16 @@ var _clock := 0.0
 var _previous := Vector2.ZERO
 var _sample_clock := 0.0
 var _residual := 0.0
-var _pending_finish := false
-var _generation := 0
-
-func _ready() -> void:
-	set_notify_transform(true)
-	set_process(emitting or not _points.is_empty())
 
 func begin(world_position: Vector2) -> void:
 	reset()
 	if not world_position.is_finite():
 		return
 	emitting = true
-	_pending_finish = true
 	_previous = world_position
 	_sample_clock = _clock
 	_points.append(world_position)
 	_births.append(_clock)
-	set_process(true)
 	queue_redraw()
 
 func sample(world_position: Vector2, delta: float = 0.0, teleport: bool = false) -> void:
@@ -78,35 +68,18 @@ func stop_emitting() -> void:
 		_points.append(_previous)
 		_births.append(_clock)
 	_trim()
-	_complete_if_empty()
 	if is_instance_valid(self):
 		queue_redraw()
 
 func reset() -> void:
-	_generation += 1
 	emitting = false
-	_pending_finish = false
 	_points.clear()
 	_births.clear()
 	_clock = 0.0
 	_sample_clock = 0.0
 	_residual = 0.0
 	_previous = Vector2.ZERO
-	set_process(false)
 	queue_redraw()
-
-func advance(delta: float) -> void:
-	if not is_finite(delta) or delta <= 0.0:
-		return
-	# Bounded time steps expire all points safely after a long pause.
-	_clock += minf(delta, 10.0)
-	_trim()
-	_complete_if_empty()
-	if is_instance_valid(self):
-		queue_redraw()
-
-func _process(delta: float) -> void:
-	advance(delta)
 
 func _trim() -> void:
 	var duration := clampf(lifetime, 0.02, 1.0)
@@ -132,20 +105,6 @@ func _trim() -> void:
 		length_left -= distance
 		last = _points[i]
 
-func _complete_if_empty() -> void:
-	if emitting or not _points.is_empty():
-		return
-	set_process(false)
-	if not _pending_finish:
-		return
-	_pending_finish = false
-	var generation := _generation
-	finished.emit()
-	if not is_instance_valid(self):
-		return
-	if auto_free and _generation == generation and not emitting and is_inside_tree():
-		queue_free()
-
 func get_points() -> PackedVector2Array:
 	return _points.duplicate()
 
@@ -166,25 +125,16 @@ func _notification(what: int) -> void:
 	elif what == NOTIFICATION_EXIT_TREE:
 		reset()
 
-func start_effect(world_position: Vector2, _direction: Vector2, _seed: int = 0) -> void:
-	auto_free = false
+func configure_effect(world_position: Vector2, _direction: Vector2, _seed_value: int = 0) -> void:
 	begin(world_position)
+	set_notify_transform(true)
 	set_process(false)
 
-func follow_effect(world_position: Vector2, _velocity: Vector2, delta: float) -> void:
+func capture_motion(world_position: Vector2, _velocity: Vector2, timestamp: float, delta: float) -> void:
+	sample_clock(timestamp)
 	sample(world_position, delta)
-	set_process(false)
 
-func advance_effect(delta: float) -> void:
-	advance(delta)
-	set_process(false)
-
-func stop_effect() -> void:
-	stop_emitting()
-	set_process(false)
-
-func effect_duration() -> float:
-	return clampf(lifetime, 0.02, 1.0)
-
-func effect_finished() -> bool:
-	return not emitting and get_active_count() == 0
+func sample_clock(timestamp: float) -> void:
+	_clock = timestamp
+	_trim()
+	queue_redraw()
