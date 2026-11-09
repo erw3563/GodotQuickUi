@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://dfl7b6sodlu27"]
+
+[ext_resource type="Script" uid="uid://wfhtwqguyo0s" path="res://addons/gdbase/ui/panel_node/border_decoration.gd" id="1_4un1g"]
+
+[node name="Decoration" type="TextureRect" unique_id=967515667]
+z_index = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -32.0
+offset_top = -16.0
+offset_right = 32.0
+offset_bottom = 16.0
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+script = ExtResource("1_4un1g")

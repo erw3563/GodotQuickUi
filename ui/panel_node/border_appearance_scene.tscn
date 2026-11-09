@@ -1,0 +1,36 @@
+[gd_scene format=3 uid="uid://bp0nxj0ya56lt"]
+
+[ext_resource type="Script" uid="uid://vca4nfb8iqa1" path="res://addons/gdbase/ui/panel_node/border_appearance_scene.gd" id="1_2nsgq"]
+[ext_resource type="PackedScene" uid="uid://dfl7b6sodlu27" path="res://addons/gdbase/ui/panel_node/border_decoration.tscn" id="2_45p80"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_6eaa3"]
+bg_color = Color(0.12, 0.1, 0.16, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.34, 0.55, 1)
+
+[node name="InventoryBorder" type="Control" unique_id=1153179988 node_paths=PackedStringArray("border_surfaces", "decoration_parent", "frame")]
+layout_mode = 3
+anchors_preset = 0
+offset_right = 384.0
+offset_bottom = 288.0
+mouse_filter = 2
+script = ExtResource("1_2nsgq")
+border_surfaces = [NodePath("Frame")]
+decoration_parent = NodePath("Frame")
+decoration_template = ExtResource("2_45p80")
+thickness_editable = true
+frame = NodePath("Frame")
+
+[node name="Frame" type="Panel" parent="." unique_id=1155208890]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 16.0
+offset_bottom = 16.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_6eaa3")
