@@ -135,7 +135,29 @@ func get_border_hit(canvas_point: Vector2, edge_width: float) -> Dictionary:
 	var point := get_global_transform().affine_inverse() * canvas_point
 	var outer := frame.get_rect() if frame != null else Rect2(Vector2.ZERO, size)
 	if not outer.has_point(point) or Rect2(Vector2.ZERO, size).has_point(point): return {}
+	if appearance_provider != null:
+		var provided := appearance_provider.get_border_hit(canvas_point, edge_width)
+		if provided.get("kind") == "style": return provided
+	for surface in border_surfaces:
+		if _border_surface_hit(surface, canvas_point, edge_width):
+			return {"kind": "style", "decoration_id": &""}
 	if outer.grow(-edge_width).has_point(point):
 		for side in 4:
 			if get_spacing_rect(side).has_point(point): return {"kind": "spacing", "side": side, "decoration_id": &""}
 	return {"kind": "style", "decoration_id": &""}
+
+## 声明的绘制表面用自身切片或描边宽度区分边框和留白。
+func _border_surface_hit(surface: Control, canvas_point: Vector2, edge_width: float) -> bool:
+	var point := surface.get_global_transform().affine_inverse() * canvas_point
+	var outer := Rect2(Vector2.ZERO, surface.size)
+	if not outer.has_point(point): return false
+	var widths := Vector4.ONE * edge_width
+	if surface is NinePatchRect:
+		widths = Vector4(surface.patch_margin_left, surface.patch_margin_top, surface.patch_margin_right, surface.patch_margin_bottom).max(widths)
+	elif surface is Panel or surface is PanelContainer:
+		var style := surface.get_theme_stylebox("panel")
+		if style is StyleBoxTexture:
+			widths = Vector4(style.texture_margin_left, style.texture_margin_top, style.texture_margin_right, style.texture_margin_bottom).max(widths)
+		elif style is StyleBoxFlat:
+			widths = Vector4(style.border_width_left, style.border_width_top, style.border_width_right, style.border_width_bottom).max(widths)
+	return not outer.grow_individual(-widths.x, -widths.y, -widths.z, -widths.w).has_point(point)
