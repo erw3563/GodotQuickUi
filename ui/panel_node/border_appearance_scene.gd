@@ -98,13 +98,6 @@ func set_border_style(values: Dictionary) -> void:
 		if values.has("bottom"): frame.offset_bottom = values.bottom
 	update_minimum_size()
 
-func get_decoration_at(canvas_point: Vector2) -> BorderDecoration:
-	var ordered := get_decorations()
-	ordered.reverse()
-	for decoration in ordered:
-		if decoration.contains_canvas_point(canvas_point): return decoration
-	return null
-
 func get_appearance_rect(id: StringName = &"") -> Rect2:
 	var decoration := get_decoration(id) if not id.is_empty() else null
 	if decoration != null:
@@ -128,23 +121,34 @@ func get_spacing_rect(side: int) -> Rect2:
 		SIDE_BOTTOM: return Rect2(Vector2(0, content.end.y), Vector2(size.x, maxf(outer.end.y - size.y, 0)))
 	return Rect2()
 
-## 装饰优先，其次是外框边缘和内侧留白。edge_width 为场景局部坐标中的命中宽度。
-func get_border_hit(canvas_point: Vector2, edge_width: float) -> Dictionary:
-	var decoration := get_decoration_at(canvas_point)
-	if decoration != null: return {"kind": "decoration", "decoration_id": decoration.appearance_id}
+## 返回重叠的装饰及边框或留白，装饰按绘制层次从上到下排列。
+## edge_width 为场景局部坐标中的命中宽度。
+func get_border_hits(canvas_point: Vector2, edge_width: float) -> Array[Dictionary]:
+	var hits: Array[Dictionary] = []
+	var ordered := get_decorations()
+	ordered.reverse()
+	for decoration in ordered:
+		if decoration.contains_canvas_point(canvas_point):
+			hits.append({"kind": "decoration", "decoration_id": decoration.appearance_id})
 	var point := get_global_transform().affine_inverse() * canvas_point
 	var outer := frame.get_rect() if frame != null else Rect2(Vector2.ZERO, size)
-	if not outer.has_point(point) or Rect2(Vector2.ZERO, size).has_point(point): return {}
+	if not outer.has_point(point) or Rect2(Vector2.ZERO, size).has_point(point): return hits
 	if appearance_provider != null:
-		var provided := appearance_provider.get_border_hit(canvas_point, edge_width)
-		if provided.get("kind") == "style": return provided
+		for provided in appearance_provider.get_border_hits(canvas_point, edge_width):
+			if provided.kind == "style":
+				hits.append(provided)
+				return hits
 	for surface in border_surfaces:
 		if _border_surface_hit(surface, canvas_point, edge_width):
-			return {"kind": "style", "decoration_id": &""}
+			hits.append({"kind": "style", "decoration_id": &""})
+			return hits
 	if outer.grow(-edge_width).has_point(point):
 		for side in 4:
-			if get_spacing_rect(side).has_point(point): return {"kind": "spacing", "side": side, "decoration_id": &""}
-	return {"kind": "style", "decoration_id": &""}
+			if get_spacing_rect(side).has_point(point):
+				hits.append({"kind": "spacing", "side": side, "decoration_id": &""})
+				return hits
+	hits.append({"kind": "style", "decoration_id": &""})
+	return hits
 
 ## 声明的绘制表面用自身切片或描边宽度区分边框和留白。
 func _border_surface_hit(surface: Control, canvas_point: Vector2, edge_width: float) -> bool:
