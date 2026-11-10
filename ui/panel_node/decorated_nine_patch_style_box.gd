@@ -20,5 +20,17 @@ func _draw(canvas_item: RID, rect: Rect2) -> void:
 	for ornament in ornaments:
 		if ornament == null or ornament.texture == null:
 			continue
-		var origin := (rect.position + rect.size * ornament.anchor).floor() + ornament.offset
-		ornament.texture.draw(canvas_item, origin)
+		ornament.texture.draw(canvas_item, ornament.get_rect(rect).position)
+
+func get_decoration(id: StringName) -> DecoratedFrameOrnament:
+	for ornament in ornaments:
+		if ornament != null and ornament.appearance_id == id: return ornament
+	return null
+
+func get_decoration_hits(point: Vector2, frame_rect: Rect2) -> Array[Dictionary]:
+	var hits: Array[Dictionary] = []
+	for index in range(ornaments.size() - 1, -1, -1):
+		var ornament := ornaments[index]
+		if ornament != null and ornament.texture != null and ornament.get_rect(frame_rect).has_point(point):
+			hits.append({"kind": "decoration", "decoration_id": ornament.appearance_id})
+	return hits
