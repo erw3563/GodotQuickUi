@@ -1,4 +1,4 @@
-﻿@tool
+@tool
 class_name QuickPopOut
 extends Node
 ## 位置演出件（离场方向）：把 [Control] 从当前布局位置 tween 到 [member target_ratio]

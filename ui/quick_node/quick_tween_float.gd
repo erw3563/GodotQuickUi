@@ -1,4 +1,4 @@
-﻿@tool
+@tool
 class_name QuickTweenFloat
 extends Node
 ## 脚本属性 Float 演出件：把目标 [Control] 上由脚本导出的 float 属性 Tween 到

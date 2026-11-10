@@ -1,4 +1,4 @@
-﻿@tool
+@tool
 class_name QuickWobble
 extends Node
 ## 晃动演出件：播放一次旋转晃动——依次停靠 [member wobble_sequence] 各角度后归

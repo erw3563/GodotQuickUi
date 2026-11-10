@@ -1,4 +1,4 @@
-﻿class_name AnimationPreview
+class_name AnimationPreview
 extends RefCounted
 ## 通用 UI 共享编辑器单次动画预览机制：属性快照、播放代次、有界等待与两阶段恢复。
 ## 实现自面板系四脚本（ZoomPanel / RotatePanel / SideBarPanel / PocketDrawerPanel）
