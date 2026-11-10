@@ -1016,15 +1016,22 @@ func _stop_child_previews() -> void:
 			node.call("preview_stop")
 
 
-## 快照演出子节点的内部持久状态（authored 值随预览回滚）；QuickPopIn / QuickPopOut /
-## QuickWobble / QuickRotate 的可回滚状态都在目标控件表现属性里、QuickDelay 无持久状态，均不在其列。
+## 快照演出件实际驱动的控件及内部持久状态；每个目标的制作值随预览恢复。
 func _capture_performance_state(node: Node) -> void:
 	if node is QuickZoom:
 		_preview.capture(node, [&"_authored_mouse_filter"])
+		_capture_preview_control(node.ui)
+	elif node is QuickShow:
+		_capture_preview_control(node.control)
 	elif node is QuickMask:
 		_preview.capture(node, [&"progress"])
 	elif node is QuickTweenFloat:
 		_capture_tween_float_state(node)
+
+
+func _capture_preview_control(control: Control) -> void:
+	if control != null:
+		_preview.capture(control, AnimationPreview.PRESENTATION_PROPERTIES + AnimationPreview.GEOMETRY_PROPERTIES)
 
 
 ## QuickTweenFloat 驱动的属性在目标脚本的导出面上，采集到其目标控件以便预览结束恢复
