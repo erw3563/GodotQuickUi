@@ -52,22 +52,10 @@ func refresh() -> void:
 func _ensure_wipe() -> void:
 	if is_instance_valid(_old_clip):
 		return
-	_old_clip = Control.new()
-	_new_clip = Control.new()
-	_old_label = Label.new()
-	_new_label = Label.new()
-	for pair in [[_old_clip, _old_label], [_new_clip, _new_label]]:
-		var holder: Control = pair[0]
-		var label: Label = pair[1]
-		holder.clip_contents = true
-		holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		label.clip_text = true
-		label.add_theme_color_override("font_shadow_color", Color.TRANSPARENT)
-		holder.add_child(label)
-		add_child(holder)
+	_old_clip = $OldClip
+	_new_clip = $NewClip
+	_old_label = $OldClip/Label
+	_new_label = $NewClip/Label
 
 func _draw() -> void:
 	if face == null:

@@ -383,12 +383,7 @@ func _reformat() -> void:
 func _ensure_glyphs() -> void:
 	if is_instance_valid(_glyphs):
 		return
-	_glyphs = get_node_or_null("Glyphs") as Control
-	if _glyphs == null:
-		_glyphs = Control.new()
-		_glyphs.name = "Glyphs"
-		add_child(_glyphs, false, Node.INTERNAL_MODE_BACK)
-	_glyphs.mouse_filter = MOUSE_FILTER_IGNORE
+	_glyphs = $Glyphs
 
 ## Numeric place keys keep units/decimals aligned through 9→10, 99→100 and shrinking.
 func _places(text: String) -> Dictionary:
@@ -459,7 +454,7 @@ func _refresh_visuals() -> void:
 	_cell_width = ceilf(_cell_width) + padding
 	_line_height = ceilf(face.get_height(point)) + 4.0 + padding
 	while _cells.size() < _entries.size():
-		var cell := Cell.new()
+		var cell := load("res://addons/gdbase/ui/numeric_display/numeric_display_cell.tscn").instantiate() as Cell
 		_glyphs.add_child(cell, false, Node.INTERNAL_MODE_BACK)
 		_cells.append(cell)
 	# 字符节点容量随当前段的字位数量收缩。
