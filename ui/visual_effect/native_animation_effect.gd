@@ -10,23 +10,25 @@ var _direction := Vector2.DOWN
 var _renderers: Array[NativeAnimationRenderer] = []
 
 func _ready() -> void:
-	if Engine.is_editor_hint() and animation_set != null: prepare(animation_set)
+	if animation_set != null: animation_set.apply_to_actor(self)
 
 func start_effect(world_position: Vector2, direction: Vector2, seed_value: int = 0) -> void:
 	global_position = world_position
 	_direction = (get_parent() as Node2D).global_transform.basis_xform_inv(direction)
 	_age = 0.0
+	if animation_set != null: animation_set.apply_to_actor(self)
 	_renderers.clear()
 	for node in get_node("FeedbackRoot/ContentRoot").find_children("*", "", true, false):
 		if node is NativeAnimationRenderer:
 			_renderers.append(node)
-			node.configure_effect(world_position, direction, seed_value)
 	if animation_set == null:
 		finished = true
 		return
-	prepare(animation_set)
 	_phase = "enter" if _binding("enter") != null else ("hold" if _binding("hold") != null else "main")
 	_play_phase()
+	for renderer in _renderers:
+		renderer.configure_effect(world_position, direction, seed_value)
+		renderer.sample_clock(0.0)
 
 func _binding(phase: String) -> NativeAnimationBinding:
 	return animation_set.resolve(&"effect", variant, "", _direction, phase) if animation_set != null else null
